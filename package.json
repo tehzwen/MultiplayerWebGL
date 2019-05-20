@@ -1,0 +1,17 @@
+{
+  "requires": true,
+  "lockfileVersion": 1,
+  "dependencies": {
+    "express": "^4.17.0",
+    "socket.io": "^2.2.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "name": "webglgame",
+  "version": "1.0.0",
+  "main": "server.js",
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
