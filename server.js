@@ -74,6 +74,7 @@ io.on('connection', function (socket) {
     });
 
     socket.on('playerUpdate', function (updateObject) {
+        console.log("player movement of " + updateObject);
         let userToUpdate = updatePlayer(updateObject, state);
         for (player in state.players) {
             if(player != userToUpdate) {

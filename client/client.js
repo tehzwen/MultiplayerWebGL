@@ -109,6 +109,7 @@ function main() {
             })
 
             socket.on('playerLeft', function (player) {
+                console.warn("Player left");
                 removePlayer(player, state);
             })
 
@@ -216,7 +217,7 @@ function addNewPlayer(player, state) {
     if (!isPlayerInPlayerList(player.playerObject.playerName, state)) {
         let obj = player.playerObject;
         let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
-            obj.geometry, obj.color, false, 1.0);
+            [1, 1, 1], obj.color, false, 1.0);
 
         playerCube.name = obj.playerName;
         state.scene.add(playerCube);
@@ -232,7 +233,7 @@ function addPlayersToScene(playerList, state) {
 
         let obj = playerList[player].playerObject;
         let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
-            obj.geometry, obj.color, false, 1.0);
+            [1, 1, 1], obj.color, false, 1.0);
 
         playerCube.name = obj.playerName;
         state.scene.add(playerCube);
