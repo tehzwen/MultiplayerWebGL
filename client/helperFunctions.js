@@ -43,7 +43,7 @@ function collidableDistanceCheck(state, distanceThreshold) {
  */
 function createCube(position, castShadow, receiveShadow, visible, geometryVals, color, transparent, opacity, name) {
     console.log(color);
-    
+
     var geometry = new THREE.BoxGeometry(geometryVals[0], geometryVals[1], geometryVals[2]);
     var material = new THREE.MeshPhongMaterial({ transparent: transparent, opacity: opacity });
     var cube = new THREE.Mesh(geometry, material);
@@ -338,33 +338,42 @@ function loadModel(state, objURL, mtlURL, initialPosition, isPlayer, basePath, s
  * @purpose Loads a model without any material and adds to the scene, used for
  * non player models
  */
-function loadModelNoMaterial(state, objURL, initialPosition, isPlayer) {
+function loadModelNoMaterial(state, objURL, initialPosition, isPlayer, color, callback) {
+    console.log(color);
     let material = new THREE.MeshStandardMaterial({
         roughness: 0.8,
-        color: new THREE.Color(0xff0000),
+        color: new THREE.Color(color.r, color.g, color.b),
 
     });
+    console.log(material);
     var objLoader = new THREE.OBJLoader();
-    objLoader.setMaterials(material);
     objLoader.setPath('../models/');
-    objLoader.load(objURL, function (object) {
-        object.position.set(initialPosition[0], initialPosition[1], initialPosition[2])
+    objLoader.load(objURL,
+        function (object) {
+            object.position.set(initialPosition[0], initialPosition[1], initialPosition[2])
 
-        object.traverse(function (child) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-        });
+            console.log(object);
+            object.traverse(function (child) {
+                child.material = material;
+                child.castShadow = true;
+                child.receiveShadow = true;
+            });
 
-        if (isPlayer) {
-            state.ship = object;
-            state.scene.add(object);
+            if (isPlayer && state) {
+                state.player = object;
+                state.scene.add(object);
+                state.camera.lookAt(getCenterPoint(object.children[0]));
+            }
+            else if (state) {
+                state.scene.add(object);
+            }
+            callback();
+
+        },
+        function (xhr) {
+            console.log("loading");
         }
-        else {
-            state.objects.push(object);
-            state.scene.add(object);
-        }
-
-    });
+    );
 }
 
 /**
@@ -509,7 +518,7 @@ function createTube(state, lengthVal, color, pointsArray, tubularSeg, radius, ra
  * @param {State variable holding all the game info} state 
  * @purpose Creates the base plane for the game and stores it in state.plane
  */
-function setupPlane(state) {
+function setupPlane(state, position) {
     let side = 120;
     geometry = new THREE.PlaneGeometry(side * 5, side * 10);
     let material = new THREE.MeshStandardMaterial({
@@ -865,4 +874,12 @@ function moveAsteroids(state) {
         }
 
     }
+}
+
+function getCenterPoint(mesh) {
+    var geometry = mesh.geometry;
+    geometry.computeBoundingBox();
+    center = geometry.boundingBox.getCenter();
+    mesh.localToWorld(center);
+    return center;
 }

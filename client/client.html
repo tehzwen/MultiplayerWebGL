@@ -1,7 +1,14 @@
 <!doctype html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/styles.css" />
+
+
     <title>WebGL game</title>
 
     <style>
@@ -16,7 +23,18 @@
     </style>
 </head>
 
-<body>
+<body style=" 
+background-image: url('./images/hexagons.gif');
+">
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
     <script src="../three.js-master/build/three.js"></script>
     <script src="three.js-master/examples/js/loaders/MTLLoader.js"></script>
     <script src="three.js-master/examples/js/loaders/OBJLoader.js"></script>
@@ -24,18 +42,25 @@
     <script src="three.js-master/examples/js/controls/OrbitControls.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="./lights.js"></script>
+    <script src="./setupPage.js"></script>
     <script src="./helperFunctions.js"></script>
     <script src="./controls.js"></script>
     <script src="./camera.js"></script>
     <script src="./client.js"></script>
-    <input id="playerName" />
-    <button  id="submitButton">submit</button>
-    <select id="colorSelect" style="width: 200px">
-        <option value="red">Red</option>
-        <option value="green">Green</option>
-        <option value="blue">Blue</option>
-        <option value="white">White</option>
-    </select>
+
+
+    <div id="loginDiv" style="	 position: absolute;
+    padding: 15px 15px 15px 15px;
+    background-color: #3c3e42f2;
+    border-radius: 5px;
+    left: 50%;
+    top: 50%;
+    -webkit-transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%);">
+    </div>
+
+
+
 </body>
 
 </html>

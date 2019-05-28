@@ -1,45 +1,66 @@
+var movementSpeed = 0.08;
+
 function movementControls(state) {
-    let movementSpeed = 0.3;
 
-    document.addEventListener("keydown", (event) => {
-        let updateSent = false;
+    document.addEventListener("keypress", (event) => {
+        state.keyboard[event.key] = true;
 
-        if (event.key === 'w') {
-            state.player.position.z += movementSpeed;
-            state.camera.position.z += movementSpeed;
-        } else if (event.key === 'a') {
-            state.player.position.x += movementSpeed;
-            state.camera.position.x += movementSpeed;
-        } else if (event.key === 'd') {
-            state.player.position.x -= movementSpeed;
-            state.camera.position.x -= movementSpeed;
-        } else if (event.key === 's') {
-            state.player.position.z -= movementSpeed;
-            state.camera.position.z -= movementSpeed;
-        } else if (event.key === 'q') {
-            state.player.rotation.x += movementSpeed;
-        } else if (event.key === 'e') {
-            state.player.rotation.x -= movementSpeed;
-        }
+    }, false)
 
-        if (!updateSent) {
-            let packet = {
-                playerObject: {
-                    playerName: state.playerName,
-                    position: JSON.stringify(state.player.position),
-                    rotation: JSON.stringify(state.player.rotation),
-                    scale: JSON.stringify(state.player.scale),
-                    visible: state.player.visible,
-                    castShadow: state.player.castShadow,
-                    receiveShadow: state.player.receiveShadow,
-                    geometry: JSON.stringify([state.player.geometry.parameters.width, state.player.geometry.parameters.height, state.player.geometry.parameters.depth]),
-                    color: JSON.stringify({ r: state.player.material.color.r, g: state.player.material.color.g, b: state.player.material.color.b })
-                },
-                socketID: state.socket.id
-            }
+    document.addEventListener('keyup', (event) => {
+        state.keyboard[event.key] = false;
+        //console.log(keysPressed);
+        //movementControls(state);
+    }, false)
 
-            socket.emit('playerUpdate', packet);
-            updateSent = true;
-        }
-    })
+
+}
+
+function sendMovementUpdate(state) {
+    let packet = {
+        playerObject: {
+            playerName: state.playerName,
+            position: JSON.stringify(state.player.position),
+            rotation: JSON.stringify(state.player.rotation),
+            scale: JSON.stringify(state.player.scale),
+            visible: state.player.visible,
+            castShadow: state.player.castShadow,
+            receiveShadow: state.player.receiveShadow,
+            color: JSON.stringify({ r: state.player.material.color.r, g: state.player.material.color.g, b: state.player.material.color.b })
+        },
+        socketID: state.socket.id
+    }
+
+    socket.emit('playerUpdate', packet);
+}
+
+
+
+function moveForward(state, forwardVector) {
+    state.player.position.x += movementSpeed * forwardVector.x;
+    state.player.position.z += movementSpeed * forwardVector.z;
+
+    state.camera.position.x += movementSpeed * forwardVector.x;
+    state.camera.position.z += movementSpeed * forwardVector.z;
+}
+function moveBackward(state, forwardVector) {
+    state.player.position.x -= movementSpeed * forwardVector.x;
+    state.player.position.z -= movementSpeed * forwardVector.z;
+
+    state.camera.position.x -= movementSpeed * forwardVector.x;
+    state.camera.position.z -= movementSpeed * forwardVector.z;
+}
+function moveLeft(state, sidewaysVector) {
+    state.player.position.x -= movementSpeed * sidewaysVector.x;
+    state.player.position.z -= movementSpeed * sidewaysVector.z;
+
+    state.camera.position.x -= movementSpeed * sidewaysVector.x;
+    state.camera.position.z -= movementSpeed * sidewaysVector.z;
+}
+function moveRight(state, sidewaysVector) {
+    state.player.position.x += movementSpeed * sidewaysVector.x;
+    state.player.position.z += movementSpeed * sidewaysVector.z;
+
+    state.camera.position.x += movementSpeed * sidewaysVector.x;
+    state.camera.position.z += movementSpeed * sidewaysVector.z;
 }

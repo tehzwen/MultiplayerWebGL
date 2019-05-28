@@ -1,0 +1,8 @@
+.menu-div {
+    background-color: aqua;
+    display: flex;
+
+}
+.color-select {
+    width: 178px;
+}

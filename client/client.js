@@ -1,4 +1,5 @@
 var socket;
+init();
 
 window.addEventListener('DOMContentLoaded', (event) => {
     console.log('DOM fully loaded and parsed');
@@ -6,18 +7,27 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     //listener for button click
     button.onclick = (function () {
-        main();
-        state.playerName = document.getElementById("playerName").value;
+        //hide main menu here
+        if (document.getElementById("playerName").value != "") {
+            document.getElementById("loginDiv").style.display = "none";
 
-        //determine color from select
+            main();
+            state.playerName = document.getElementById("playerName").value;
+
+            //determine color from select
 
 
 
-        state.player.name = state.playerName;
-        let queryVal = createPacket(state);
-        console.warn(queryVal);
-        socket = io.connect('', { query: queryVal });
-        state.socket = socket;
+            state.player.name = state.playerName;
+            let queryVal = createPacket(state);
+            console.warn(queryVal);
+            socket = io.connect('', { query: queryVal });
+            state.socket = socket;
+        } else {
+            let errorMessage = document.getElementById("userNameErrorText");
+            errorMessage.style.display = "";
+        }
+
     });
 
 });
@@ -28,6 +38,7 @@ function main() {
         player: null,
         players: [],
         playerName: null,
+        keyboard: { movementMade: false },
         socketMessages: {
             receivedInitialPlayerList: false
         }
@@ -50,6 +61,7 @@ function main() {
 
     let clock = new THREE.Clock();
     var scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
     state.scene = scene;
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     state.camera = camera;
@@ -76,9 +88,11 @@ function main() {
     scene.add(playerCube);
     state.camera.lookAt(state.player.position);
 
-
     controls.target = state.player.position;
     controls.enablePan = false;
+
+    console.log(this.state.player);
+
 
     function animate() {
         if (socket) {
@@ -101,6 +115,35 @@ function main() {
             socket.on('playerUpdate', function (playerToUpdate) {
                 updatePlayer(playerToUpdate, state);
             })
+        }
+
+        //console.log(state.keyboard);
+        let forwardVector = state.camera.getWorldDirection(new THREE.Vector3());
+        let sidewaysVector = new THREE.Vector3();
+        sidewaysVector.crossVectors(forwardVector, state.player.up);
+
+        //console.log(camera.getWorldDirection(new THREE.Vector3()));
+
+        if (state.keyboard['w']) {
+            moveForward(state, forwardVector);
+            state.keyboard.movementMade = true;
+        }
+        if (state.keyboard['s']) {
+            moveBackward(state, forwardVector);
+            state.keyboard.movementMade = true;
+        }
+        if (state.keyboard['a']) {
+            moveLeft(state, sidewaysVector);
+            state.keyboard.movementMade = true;
+        }
+        if (state.keyboard['d']) {
+            moveRight(state, sidewaysVector);
+            state.keyboard.movementMade = true;
+        }
+
+        if(state.keyboard.movementMade) {
+            sendMovementUpdate(state);
+            state.keyboard.movementMade = false;
         }
 
         controls.update();
