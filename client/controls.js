@@ -1,4 +1,5 @@
 var movementSpeed = 0.08;
+var sensitivity = 0.0065;
 
 function movementControls(state) {
 
@@ -12,6 +13,16 @@ function movementControls(state) {
         //console.log(keysPressed);
         //movementControls(state);
     }, false)
+
+    document.addEventListener('mousemove', (event) => {
+        //console.log(event);
+
+        if (event.buttons === 1) {
+            //rotate player
+            state.player.rotation.y -= event.movementX * sensitivity;
+            sendMovementUpdate(state);
+        }
+})
 
 }
 
@@ -32,8 +43,6 @@ function sendMovementUpdate(state) {
 
     socket.emit('playerUpdate', packet);
 }
-
-
 
 function moveForward(state, forwardVector) {
     state.player.position.x += movementSpeed * forwardVector.x;

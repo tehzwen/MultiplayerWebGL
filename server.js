@@ -9,7 +9,8 @@ var client = new pg.Client(connString);
 client.connect();
 
 var state = {
-    players: {}
+    players: {},
+    objects: []
 }
 
 
@@ -99,6 +100,28 @@ io.on('connection', function (socket) {
                 //console.log(player);
                 io.to(player.toString()).emit('playerUpdate', state.players[userToUpdate]);
             }
+        }
+    })
+
+    socket.on('objectCreated', function (newObjectPacket) {
+        for (player in state.players) {
+            if (newObjectPacket.socketID !== player) {
+                io.to(player.toString()).emit('objectCreated', newObjectPacket);
+            }
+        }
+
+        //insert object into database but first check if it has already been accounted for
+        if (state.objects.indexOf(newObjectPacket.uuid) === -1) {
+            console.log(newObjectPacket);
+            client.query(`INSERT INTO gameobject (positionx, positiony, gameobjecttypeid, positionz, color, scale) VALUES(${newObjectPacket.position.x}, ${newObjectPacket.position.y},
+                 ${newObjectPacket.objectTypeID}, ${newObjectPacket.position.z}, '{${newObjectPacket.color.r}, ${newObjectPacket.color.g}, ${newObjectPacket.color.b}}', '{${newObjectPacket.scale}}')`,
+                (error, results) => {
+                    if (error) {
+                        console.error(error);
+                    } else {
+                        console.log(`Object ${newObjectPacket.uuid} successfully added to database`);
+                    }
+                })
         }
     })
 });

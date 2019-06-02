@@ -742,8 +742,11 @@ function getCenterPoint(mesh) {
 function createGameObjectsFromServerFetch(state, gameObject) {
     //creating a cube
     if (gameObject.gameobjecttypeid === 1) {
-        let color = state.color = { r: gameObject.color[0], g: gameObject.color[1], b: gameObject.color[2] }
+        let color = { r: gameObject.color[0], g: gameObject.color[1], b: gameObject.color[2] };
         let cube = createCube({ x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, true, true, true, [1, 1, 1], color, false, 1.0);
+        cube.scale.x = gameObject.scale[0];
+        cube.scale.y = gameObject.scale[1];
+        cube.scale.z = gameObject.scale[2];
         state.scene.add(cube);
     }
 }
@@ -766,7 +769,7 @@ function createPlayerNameText(state) {
         { color: 0x000000, specular: 0xffffff }
     );
 
-    
+
     let mesh = new THREE.Mesh(text, textMaterial);
     mesh.position.y += 1;
     mesh.opacity = 0.7;
@@ -788,4 +791,43 @@ function setupGameFont(state) {
         function (err) {
             console.error(err);
         });
+}
+
+function loadCreatedObject(state, packet) {
+    //create a cube
+    if (packet.objectTypeID === 1) {
+        //check if this object has already been made
+        if (state.objects.indexOf(packet.uuid) === -1) {
+            let obj = createCube(packet.position, true, true, true, packet.geometry, packet.color, false, 1.0);
+            state.objects.push(packet.uuid);
+            state.scene.add(obj);
+        }
+
+    }
+
+
+
+}
+
+function createObject(state, objectTypeID, position) {
+    //create a cube
+    if (objectTypeID === 1) {
+        let cube = createCube(position, true, true, true, [1, 1, 1], { r: 0.5, g: 0.8, b: 0.2 }, false, 1.0);
+        state.scene.add(cube);
+        let packet = {
+            geometry: cube.geometry,
+            color: cube.material.color,
+            socketID: state.socket.id,
+            position: position,
+            objectTypeID,
+            scale: [1,1,1], //can add scale customization later
+            uuid: cube.uuid
+        }
+
+        state.socket.emit('objectCreated', packet);
+    }
+
+    setTimeout(function () {
+        state.createdObject = false
+    }, 500);
 }

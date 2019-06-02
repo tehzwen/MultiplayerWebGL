@@ -41,7 +41,9 @@ function main() {
         keyboard: { movementMade: false },
         socketMessages: {
             receivedInitialPlayerList: false
-        }
+        },
+        createdObject: false,
+        objects: []
     };
 
     let color = document.getElementById("colorSelect").value;
@@ -72,6 +74,10 @@ function main() {
     state.controls = controls;
     //controls.update();
 
+    //create jsonloader 
+    let jsonLoader = new THREE.ObjectLoader();
+    state.loader = jsonLoader;
+
     var renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
@@ -91,7 +97,7 @@ function main() {
     
 
     
-    //controls.enablePan = false;
+    controls.enablePan = false;
 
     state.camera.position.set(state.player.position.x, 0.0, -5.0);
     state.camera.lookAt(state.player.position);
@@ -130,6 +136,10 @@ function main() {
             socket.on('playerUpdate', function (playerToUpdate) {
                 updatePlayer(playerToUpdate, state);
             })
+
+            socket.on('objectCreated', function (createdObject) {
+                loadCreatedObject(state, createdObject);
+            })
         }
 
         //console.log(state.keyboard);
@@ -159,6 +169,14 @@ function main() {
         if (state.keyboard.movementMade) {
             sendMovementUpdate(state);
             state.keyboard.movementMade = false;
+        }
+
+        if (state.keyboard['e']) {
+            if(!state.createdObject) {
+                state.createdObject = true;
+                createObject(state, 1, state.player.position);
+            }
+            
         }
 
         //controls.update();
