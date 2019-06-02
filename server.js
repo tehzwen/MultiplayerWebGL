@@ -4,6 +4,7 @@ var http = require('http').createServer(app);
 var io = require('socket.io')(http);
 var pg = require('pg');
 var connString = "postgres://test:Entropy@localhost:5432/entropy";
+const cors = require('cors');
 
 var client = new pg.Client(connString);
 client.connect();
@@ -13,19 +14,26 @@ var state = {
     objects: []
 }
 
+app.use(function(req, res, next) {
+	  res.header("Access-Control-Allow-Origin", "*");
+	  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+	  next();
+});
 
 app.use(express.static('client'));
+
 
 app.get('/', function (req, res) {
     res.sendFile(__dirname + '/client/client.html');
 });
 
-app.get('/gameobjects', function (req, res) {
+app.get('/gameobjects', cors(), function (req, res) {
     //go to database and get gameobjects & their types
     client.query('SELECT * FROM gameobject LEFT OUTER JOIN gameobjecttype ON (gameobject.gameobjecttypeid = gameobjecttype.id) ', (error, results) => {
         if (error) {
             res.sendStatus(500);
         }
+	res.setHeader('Access-Control-Allow-Origin', "*");
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(results.rows));
     })

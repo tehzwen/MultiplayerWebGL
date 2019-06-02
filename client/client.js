@@ -208,7 +208,8 @@ function createPacket(state) {
 
 function initObjects(state) {
     //send get request for existing game object data
-    fetch(serverIP + "/gameobjects", { mode: 'cors' })
+	console.warn(serverIP + ":3000/gameobjects");
+    fetch(serverIP + ":3000/gameobjects", { mode: 'cors' })
         .then((res) => {
             return res.json();
         })
