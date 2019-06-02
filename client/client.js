@@ -94,9 +94,9 @@ function main() {
     state.player = playerCube;
 
     scene.add(playerCube);
-    
 
-    
+
+
     controls.enablePan = false;
 
     state.camera.position.set(state.player.position.x, 0.0, -5.0);
@@ -172,11 +172,11 @@ function main() {
         }
 
         if (state.keyboard['e']) {
-            if(!state.createdObject) {
+            if (!state.createdObject) {
                 state.createdObject = true;
                 createObject(state, 1, state.player.position);
             }
-            
+
         }
 
         //controls.update();
@@ -208,7 +208,7 @@ function createPacket(state) {
 
 function initObjects(state) {
     //send get request for existing game object data
-    fetch(serverIP + "/gameobjects")
+    fetch(serverIP + "/gameobjects", { mode: 'cors' })
         .then((res) => {
             return res.json();
         })
