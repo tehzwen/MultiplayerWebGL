@@ -56,8 +56,10 @@ function main() {
         state.color = { r: 1.0, g: 1.0, b: 1.0 }
     }
 
+    initObjects(state);
 
     movementControls(state);
+    //mouseLookControls(state);
 
     let clock = new THREE.Clock();
     var scene = new THREE.Scene();
@@ -65,10 +67,10 @@ function main() {
     state.scene = scene;
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     state.camera = camera;
-    camera.position.set(0, 0, -10);
 
     var controls = new THREE.OrbitControls(state.camera);
-    controls.update();
+    state.controls = controls;
+    //controls.update();
 
     var renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -86,13 +88,25 @@ function main() {
     state.player = playerCube;
 
     scene.add(playerCube);
+    
+
+    
+    //controls.enablePan = false;
+
+    state.camera.position.set(state.player.position.x, 0.0, -5.0);
     state.camera.lookAt(state.player.position);
-
     controls.target = state.player.position;
-    controls.enablePan = false;
 
-    console.log(this.state.player);
+    //var controls = new THREE.PointerLockControls(state.camera);
+    //state.scene.add(state.controls.getObject()); //camera is still slightly broken
 
+    setupGameFont(state);
+
+
+    /**
+     * test of making text over player head
+     */
+    //state.scene.add(new THREE.TextGeometry())
 
     function animate() {
         if (socket) {
@@ -142,12 +156,13 @@ function main() {
             state.keyboard.movementMade = true;
         }
 
-        if(state.keyboard.movementMade) {
+        if (state.keyboard.movementMade) {
             sendMovementUpdate(state);
             state.keyboard.movementMade = false;
         }
 
-        controls.update();
+        //controls.update();
+        //state.camera.rotation.y += 0.5;
         requestAnimationFrame(animate);
         renderer.render(scene, camera);
     }
@@ -171,6 +186,24 @@ function createPacket(state) {
     }
 
     return packet;
+}
+
+function initObjects(state) {
+    //send get request for existing game object data
+    fetch('http://localhost:3000/gameobjects')
+        .then((res) => {
+            return res.json();
+        })
+        .then((data) => {
+            //iterate through data and create objects 
+            console.log(data);
+            data.map((item) => {
+                createGameObjectsFromServerFetch(state, item);
+            })
+        })
+        .catch((err) => {
+            console.error(err);
+        })
 }
 
 function isPlayerInPlayerList(playerName, state) {

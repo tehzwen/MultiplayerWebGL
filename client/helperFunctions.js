@@ -723,81 +723,6 @@ function updateTextValues(state) {
 
 /**
  * 
- * @param {Game state variable} state 
- * @purpose Checks if the player has died or not and plays death video
- */
-function checkIfDead(state) {
-    if (state.healthVal <= 0) {
-        state.moving = false;
-        state.tieVideo.style.display = "inline";
-        state.tieVideo.style.width = "100%";
-        state.tieVideo.style.height = "100%";
-        state.tieVideo.style.position = "absolute";
-
-        //checks if the video is not done playing
-        if (!state.videoDonePlaying) {
-            state.tieVideo.play();
-            state.videoDonePlaying = true;
-        }
-
-        //if the current time is equal to the duration then the video is over
-        if (state.tieVideo.currentTime === state.tieVideo.duration) {
-            state.tieVideo.style.display = "none";
-            resetGame(state);
-        }
-    }
-}
-
-/**
- * 
- * @param {Game state variable} state
- * @purpose Resets the game upon completion of the game 
- */
-function resetGame(state) {
-
-    //iterate through existing game objects and delete them
-    for (let i = 0; i < state.objects.length; i++) {
-        state.objects[i].material.dispose();
-        state.objects[i].geometry.dispose();
-        state.scene.remove(state.objects[i]);
-    }
-
-    state.objects = [];
-
-    //iterates through the models in the game and deletes them
-    for (let i = 0; i < state.models.length; i++) {
-        state.scene.remove(state.models[i]);
-    }
-
-    //resets the camera and ship positions and recreates the levels
-    state.camera.position.set(0, 1, -5);
-    state.collisionBox.position.set(0, 0, 10)
-    state.ship.position.set(0, 0, 10);
-    initObjects(state);
-
-    //iterate through the lights and destroy them then recreate them
-    for (let i = 0; i < state.lights.length; i++) {
-        state.scene.remove(state.lights[i]);
-    }
-
-    createLight(state, state.scene, false, 0, 100, 5);
-    createLight(state, state.scene, true, 0, 50, 5);
-    createLight(state, state.scene, false, 0, 50, 70);
-    createLight(state, state.scene, false, -70, 100, 5);
-
-    //reset values for plane, health, score and start buttons
-    state.videoDonePlaying = false;
-    state.healthVal = 100;
-    state.scoreVal = 0;
-    state.plane.position.x = 0;
-    state.plane.position.y = -5;
-    state.plane.position.z = 0;
-    state.startButton.style.display = "inline";
-    state.gameStarted = false;
-}
-
-/**
- * 
  * @param {float value to be converted} value
  * @purpose Converts float to ints 
  */
@@ -805,76 +730,6 @@ function float2int(value) {
     return value | 0;
 }
 
-/**
- * 
- * @param {Game state variable} state 
- * @purpose checks if the invincibility timer has elapsed 4 seconds or not
- * and sets the values appropriately. Also calls function to make ship 
- * opacity
- */
-function checkInvincibleTimer(state) {
-    let time = Date.now();
-
-    if (time - state.invincibleTime >= 4000) {
-
-        state.invincible = false;
-        changeShipOpacity(state, 1.0);
-    }
-}
-
-/**
- * 
- * @param {Game state variable} state 
- * @param {Opacity value to change to} value 
- * @purpose Change ships opacity to value
- */
-function changeShipOpacity(state, value) {
-    let material = state.ship.children[0].material;
-
-    for (let x = 0; x < material.length; x++) {
-        material[x].transparent = true;
-        material[x].opacity = value;
-    }
-}
-
-/**
- * 
- * @param {*} state 
- * @purpose Move asteroids from side to side
- */
-function moveAsteroids(state) {
-
-    let speed = 10;
-    let delta = state.clock.getDelta();
-
-    for (let i = 0; i < state.movingAsteroids.length; i++) {
-
-        if (state.movingAsteroids[i].position.x === -25) {
-            //send left (positive)
-            state.movingAsteroids[i].direction = "left";
-        }
-        else if (state.movingAsteroids[i].position.x === 25) {
-            //send right (negative)
-            state.movingAsteroids[i].direction = "right";
-        }
-
-        if (state.movingAsteroids[i].direction === "left" && state.movingAsteroids[i].position.x < 25) {
-            state.movingAsteroids[i].position.x += speed * delta;
-        }
-        else if (state.movingAsteroids[i].direction === "right" && state.movingAsteroids[i].position.x > -25) {
-            state.movingAsteroids[i].position.x -= speed * delta;
-        }
-        else {
-            if (state.movingAsteroids[i].direction === "left") {
-                state.movingAsteroids[i].direction = "right";
-            }
-            else {
-                state.movingAsteroids[i].direction = "left";
-            }
-        }
-
-    }
-}
 
 function getCenterPoint(mesh) {
     var geometry = mesh.geometry;
@@ -882,4 +737,55 @@ function getCenterPoint(mesh) {
     center = geometry.boundingBox.getCenter();
     mesh.localToWorld(center);
     return center;
+}
+
+function createGameObjectsFromServerFetch(state, gameObject) {
+    //creating a cube
+    if (gameObject.gameobjecttypeid === 1) {
+        let color = state.color = { r: gameObject.color[0], g: gameObject.color[1], b: gameObject.color[2] }
+        let cube = createCube({ x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, true, true, true, [1, 1, 1], color, false, 1.0);
+        state.scene.add(cube);
+    }
+}
+
+function createPlayerNameText(state) {
+    let text = new THREE.TextGeometry(state.playerName, {
+        font: state.font,
+        size: 0.2,
+        height: 0.1,
+        curveSegments: 12,
+        bevelEnabled: false,
+        bevelThickness: 1,
+        bevelSize: 2,
+        bevelOffset: 0,
+        bevelSegments: 5
+    });
+
+
+    let textMaterial = new THREE.MeshPhongMaterial(
+        { color: 0x000000, specular: 0xffffff }
+    );
+
+    
+    let mesh = new THREE.Mesh(text, textMaterial);
+    mesh.position.y += 1;
+    mesh.opacity = 0.7;
+
+    state.player.add(mesh);
+}
+
+function setupGameFont(state) {
+    let fontLoader = new THREE.FontLoader();
+    fontLoader.load('./fonts/outrun_future_Regular.json',
+        function (font) {
+            console.log(font)
+            state.font = font;
+            createPlayerNameText(state);
+        },
+        function (xhr) {
+            console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+        },
+        function (err) {
+            console.error(err);
+        });
 }

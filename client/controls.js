@@ -13,7 +13,6 @@ function movementControls(state) {
         //movementControls(state);
     }, false)
 
-
 }
 
 function sendMovementUpdate(state) {

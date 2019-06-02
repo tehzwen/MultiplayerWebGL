@@ -2,16 +2,34 @@ const express = require('express');
 var app = require('express')();
 var http = require('http').createServer(app);
 var io = require('socket.io')(http);
+var pg = require('pg');
+var connString = "postgres://test:Entropy@localhost:5432/entropy";
+
+var client = new pg.Client(connString);
+client.connect();
 
 var state = {
     players: {}
 }
+
 
 app.use(express.static('client'));
 
 app.get('/', function (req, res) {
     res.sendFile(__dirname + '/client/client.html');
 });
+
+app.get('/gameobjects', function (req, res) {
+    //go to database and get gameobjects & their types
+    client.query('SELECT * FROM gameobject LEFT OUTER JOIN gameobjecttype ON (gameobject.gameobjecttypeid = gameobjecttype.id) ', (error, results) => {
+        if (error) {
+            res.sendStatus(500);
+        }
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(results.rows));
+    })
+
+})
 
 io.on('connection', function (socket) {
     //check if player exists already
@@ -74,11 +92,11 @@ io.on('connection', function (socket) {
     });
 
     socket.on('playerUpdate', function (updateObject) {
-        console.log("player movement of " + updateObject);
+        //console.log("player movement of " + updateObject);
         let userToUpdate = updatePlayer(updateObject, state);
         for (player in state.players) {
-            if(player != userToUpdate) {
-                console.log(player);
+            if (player != userToUpdate) {
+                //console.log(player);
                 io.to(player.toString()).emit('playerUpdate', state.players[userToUpdate]);
             }
         }
@@ -106,7 +124,7 @@ function playerExistsObject(playerName, state) {
 
 function updatePlayer(playerObj, state) {
     playerObj.playerObject = jsonParseObjectFields(playerObj.playerObject);
-    state.players[playerObj.socketID] = {...state.players[playerObj.socketID], ...playerObj};
+    state.players[playerObj.socketID] = { ...state.players[playerObj.socketID], ...playerObj };
     //console.log(state.players[playerObj.socketID]);
     //emit that player has changed to all other players
     return playerObj.socketID;
