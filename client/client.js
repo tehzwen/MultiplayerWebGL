@@ -208,7 +208,7 @@ function createPacket(state) {
 
 function initObjects(state) {
     //send get request for existing game object data
-    fetch('http://localhost:3000/gameobjects')
+    fetch(serverIP + "/gameobjects")
         .then((res) => {
             return res.json();
         })
