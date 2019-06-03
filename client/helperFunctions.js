@@ -8,11 +8,10 @@ var MAX_POINTS = 500;
  */
 function collidableDistanceCheck(state, distanceThreshold) {
     //check the distance of each object in the objects array that isnt our ship and add to collidable array if close
-    if (state.objects.length > 0) {
-        for (let x = 0; x < state.objects.length; x++) {
-            //console.log(state.ship.position.distanceTo(state.objects[x].position));
-            if (state.ship.position.distanceTo(state.objects[x].position) <= distanceThreshold && state.objects[x] !== state.ship && !state.collidableObjects.includes(state.objects[x])) {
-                state.collidableObjects.push(state.objects[x]);
+    if (state.allObjects.length > 0) {
+        for (let x = 0; x < state.allObjects.length; x++) {
+            if (state.player.position.distanceTo(state.allObjects[x].position) <= distanceThreshold && state.allObjects[x] !== state.player && !state.collidableObjects.includes(state.allObjects[x])) {
+                state.collidableObjects.push(state.allObjects[x]);
             }
         }
     }
@@ -20,7 +19,7 @@ function collidableDistanceCheck(state, distanceThreshold) {
     //check if collidable objects have left collidable range
     if (state.collidableObjects.length > 0) {
         for (let i = 0; i < state.collidableObjects.length; i++) {
-            if (state.ship.position.distanceTo(state.collidableObjects[i].position) >= distanceThreshold) {
+            if (state.player.position.distanceTo(state.collidableObjects[i].position) >= distanceThreshold) {
                 state.collidableObjects.splice(i);
             }
         }
@@ -41,9 +40,7 @@ function collidableDistanceCheck(state, distanceThreshold) {
  * @return cube - cube object
  * @purpose creates a cube and returns it
  */
-function createCube(position, castShadow, receiveShadow, visible, geometryVals, color, transparent, opacity, name) {
-    console.log(color);
-
+function createCube(position, castShadow, receiveShadow, visible, geometryVals, color, transparent, opacity) {
     var geometry = new THREE.BoxGeometry(geometryVals[0], geometryVals[1], geometryVals[2]);
     var material = new THREE.MeshPhongMaterial({ transparent: transparent, opacity: opacity });
     var cube = new THREE.Mesh(geometry, material);
@@ -747,48 +744,92 @@ function createGameObjectsFromServerFetch(state, gameObject) {
         cube.scale.x = gameObject.scale[0];
         cube.scale.y = gameObject.scale[1];
         cube.scale.z = gameObject.scale[2];
+        state.allObjects.push(cube);
         state.scene.add(cube);
     }
 }
 
-function createPlayerNameText(state) {
-    let text = new THREE.TextGeometry(state.playerName, {
-        font: state.font,
-        size: 0.2,
-        height: 0.1,
-        curveSegments: 12,
-        bevelEnabled: false,
-        bevelThickness: 1,
-        bevelSize: 2,
-        bevelOffset: 0,
-        bevelSegments: 5
-    });
+function createPlayerNameText(state, playerObject) {
+    console.warn(playerObject);
+    if (!state.font) {
+        let fontLoader = new THREE.FontLoader();
+        fontLoader.load('./fonts/outrun_future_Regular.json',
+            function (font) {
+                console.log(font)
+                state.font = font;
+                let text = new THREE.TextGeometry(playerObject.playerName, {
+                    font: state.font,
+                    size: 0.2,
+                    height: 0.05,
+                    curveSegments: 12,
+                    bevelEnabled: false,
+                    bevelThickness: 1,
+                    bevelSize: 2,
+                    bevelOffset: 0,
+                    bevelSegments: 5
+                });
 
 
-    let textMaterial = new THREE.MeshPhongMaterial(
-        { color: 0x000000, specular: 0xffffff }
-    );
+                let textMaterial = new THREE.MeshPhongMaterial(
+                    { color: 0x000000, specular: 0xffffff }
+                );
 
 
-    let mesh = new THREE.Mesh(text, textMaterial);
-    mesh.position.y += 1;
-    mesh.opacity = 0.7;
+                let mesh = new THREE.Mesh(text, textMaterial);
+                mesh.position.y += 1;
+                mesh.opacity = 0.7;
 
-    state.player.add(mesh);
+                playerObject.add(mesh);
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (err) {
+
+                console.error(err);
+            });
+    } else {
+        let text = new THREE.TextGeometry(playerObject.playerName, {
+            font: state.font,
+            size: 0.2,
+            height: 0.05,
+            curveSegments: 12,
+            bevelEnabled: false,
+            bevelThickness: 1,
+            bevelSize: 2,
+            bevelOffset: 0,
+            bevelSegments: 5
+        });
+
+
+        let textMaterial = new THREE.MeshPhongMaterial(
+            { color: 0x000000, specular: 0xffffff }
+        );
+
+
+        let mesh = new THREE.Mesh(text, textMaterial);
+        mesh.position.y += 1;
+        mesh.opacity = 0.7;
+
+        playerObject.add(mesh);
+    }
+
 }
 
 function setupGameFont(state) {
+
     let fontLoader = new THREE.FontLoader();
     fontLoader.load('./fonts/outrun_future_Regular.json',
         function (font) {
             console.log(font)
             state.font = font;
-            createPlayerNameText(state);
+            createPlayerNameText(state, state.player);
         },
         function (xhr) {
             console.log((xhr.loaded / xhr.total * 100) + '% loaded');
         },
         function (err) {
+
             console.error(err);
         });
 }
@@ -800,33 +841,30 @@ function loadCreatedObject(state, packet) {
         if (state.objects.indexOf(packet.uuid) === -1) {
             let obj = createCube(packet.position, true, true, true, packet.geometry, packet.color, false, 1.0);
             state.objects.push(packet.uuid);
+            state.allObjects.push(obj);
             state.scene.add(obj);
         }
-
     }
-
-
-
 }
 
 function createObject(state, objectTypeID, position) {
     //create a cube
     if (objectTypeID === 1) {
-        let cube = createCube(position, true, true, true, [1, 1, 1], { r: 0.5, g: 0.8, b: 0.2 }, false, 1.0);
+        let cube = createCube(position, true, true, true, [1, 1, 1], { r: Math.random(), g: Math.random(), b: Math.random() }, false, 1.0);
         state.scene.add(cube);
+        state.allObjects.push(cube);
         let packet = {
             geometry: cube.geometry,
             color: cube.material.color,
             socketID: state.socket.id,
             position: position,
             objectTypeID,
-            scale: [1,1,1], //can add scale customization later
+            scale: [1, 1, 1], //can add scale customization later
             uuid: cube.uuid
         }
-
         state.socket.emit('objectCreated', packet);
     }
-
+    //half second cool down on creating objects
     setTimeout(function () {
         state.createdObject = false
     }, 500);

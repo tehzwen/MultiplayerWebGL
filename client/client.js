@@ -18,9 +18,8 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
 
 
-            state.player.name = state.playerName;
+            state.player.playerName = state.playerName;
             let queryVal = createPacket(state);
-            console.warn(queryVal);
             socket = io.connect('', { query: queryVal });
             state.socket = socket;
         } else {
@@ -43,7 +42,10 @@ function main() {
             receivedInitialPlayerList: false
         },
         createdObject: false,
-        objects: []
+        objects: [],
+        collidableObjects: [],
+        allObjects: [],
+        collisionMade: false
     };
 
     let color = document.getElementById("colorSelect").value;
@@ -78,7 +80,7 @@ function main() {
     let jsonLoader = new THREE.ObjectLoader();
     state.loader = jsonLoader;
 
-    var renderer = new THREE.WebGLRenderer();
+    var renderer = new THREE.WebGLRenderer({ powerPreference: "high-performance" });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
@@ -89,7 +91,7 @@ function main() {
     let ambientLight = createAmbientLight(0xffffff, 0.25);
     scene.add(ambientLight);
 
-    let playerCube = createCube({ x: createRandomNumber(5, -5), y: 0, z: 0 }, true, true, true, [1, 1, 1],
+    let playerCube = createCube({ x: createRandomNumber(15, -15), y: 0, z: 0 }, true, true, true, [1, 1, 1],
         state.color, false, 1.0);
     state.player = playerCube;
 
@@ -113,7 +115,6 @@ function main() {
      * test of making text over player head
      */
     //state.scene.add(new THREE.TextGeometry())
-
     function animate() {
         if (socket) {
             if (!state.socketMessages.receivedInitialPlayerList) {
@@ -141,48 +142,54 @@ function main() {
                 loadCreatedObject(state, createdObject);
             })
         }
-
-        //console.log(state.keyboard);
         let forwardVector = state.camera.getWorldDirection(new THREE.Vector3());
         let sidewaysVector = new THREE.Vector3();
         sidewaysVector.crossVectors(forwardVector, state.player.up);
 
-        //console.log(camera.getWorldDirection(new THREE.Vector3()));
+        //check collisions
 
-        if (state.keyboard['w']) {
-            moveForward(state, forwardVector);
-            state.keyboard.movementMade = true;
-        }
-        if (state.keyboard['s']) {
-            moveBackward(state, forwardVector);
-            state.keyboard.movementMade = true;
-        }
-        if (state.keyboard['a']) {
-            moveLeft(state, sidewaysVector);
-            state.keyboard.movementMade = true;
-        }
-        if (state.keyboard['d']) {
-            moveRight(state, sidewaysVector);
-            state.keyboard.movementMade = true;
-        }
+        if (state.collidableObjects.length > 0) {
+            for (var vertexIndex = 0; vertexIndex < state.player.geometry.vertices.length; vertexIndex++) {
+                var localVertex = state.player.geometry.vertices[vertexIndex].clone();
+                var globalVertex = localVertex.applyMatrix4(state.player.matrix)
+                //var globalVertex = state.player.matrix.multiplyVector3(localVertex);
+                var directionVector = globalVertex.sub(state.player.position);
 
-        if (state.keyboard.movementMade) {
-            sendMovementUpdate(state);
-            state.keyboard.movementMade = false;
-        }
+                var ray = new THREE.Raycaster(state.player.position, directionVector.clone().normalize());
+                var collisionResults = ray.intersectObjects(state.collidableObjects);
 
-        if (state.keyboard['e']) {
-            if (!state.createdObject) {
-                state.createdObject = true;
-                createObject(state, 1, state.player.position);
+                // This will check the collision with other objects. If it detects collision, the player will be unable to move
+                if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
+
+                    let collisionVector = new THREE.Vector3();
+
+
+                    state.collisionMade = true;
+
+                    collisionVector.subVectors(state.player.position, collisionResults[0].point).normalize();
+
+
+                    let sideColVector = new THREE.Vector3();
+                    sideColVector.crossVectors(collisionVector, state.player.up);
+                    forwardVector = collisionVector;
+                    sidewaysVector = sideColVector;
+                }
+                else {
+                    // Else, the player can move forwards
+
+                }
             }
-
         }
+
+        checkForInput(state, forwardVector, sidewaysVector);
+        collidableDistanceCheck(state, 3);
+        //console.log(state.collidableObjects);
 
         //controls.update();
         //state.camera.rotation.y += 0.5;
         requestAnimationFrame(animate);
         renderer.render(scene, camera);
+        state.collisionMade = false;
     }
     animate();
 
@@ -206,16 +213,28 @@ function createPacket(state) {
     return packet;
 }
 
+function determineLowestDifference(vec1, vec2) {
+    let xDiff = Math.abs(vec1.x - vec2.x);
+    let yDiff = Math.abs(vec1.y - vec2.y);
+    let zDiff = Math.abs(vec1.z - vec2.z);
+
+    if (xDiff < zDiff) {
+        return "x";
+    } else if (zDiff < xDiff) {
+        return "z";
+    } else {
+        return "No idea";
+    }
+}
+
 function initObjects(state) {
     //send get request for existing game object data
-	console.warn(serverIP + ":3000/gameobjects");
     fetch(serverIP + ":3000/gameobjects", { mode: 'cors' })
         .then((res) => {
             return res.json();
         })
         .then((data) => {
             //iterate through data and create objects 
-            console.log(data);
             data.map((item) => {
                 createGameObjectsFromServerFetch(state, item);
             })
@@ -240,7 +259,7 @@ function updatePlayer(player, state) {
 
     //map the variables of the mesh to the corresponding values sent from the server
     for (child in state.scene.children) {
-        if (state.scene.children[child].name === player.playerObject.playerName) {
+        if (state.scene.children[child].playerName === player.playerObject.playerName) {
             let scenePlayerToUpdate = state.scene.children[child];
 
             //position first
@@ -256,11 +275,24 @@ function updatePlayer(player, state) {
 function removePlayer(player, state) {
     for (child in state.scene.children) {
         //console.log(state.scene.children[child].name + " vs. " + player.playerObject.playerName);
-        if (state.scene.children[child].name === player.playerObject.playerName) {
-            console.log(state.scene.children[child]);
+        if (state.scene.children[child].playerName === player.playerObject.playerName) {
+
+            if (state.scene.children[child].children.length > 0) {
+                for (let i = 0; i < state.scene.children[child].children.length; i++) {
+                    state.scene.children[child].children[i].geometry.dispose();
+                    state.scene.children[child].children[i].material.dispose();
+                    state.scene.remove(state.scene.children[child].children[i]);
+                }
+            }
             //remove from players array
+            state.collidableObjects = [];
+            state.scene.children[child].geometry.dispose();
+            state.scene.children[child].material.dispose();
+
+            state.allObjects.splice(state.allObjects.indexOf(state.scene.children[child]), 1);
             state.players.splice(state.players.indexOf(player.playerObject.playerName), 1);
             state.scene.remove(state.scene.children[child]);
+            
         }
     }
 }
@@ -270,10 +302,12 @@ function addNewPlayer(player, state) {
         let obj = player.playerObject;
         let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
             [1, 1, 1], obj.color, false, 1.0);
+        playerCube.playerName = obj.playerName;
 
-        playerCube.name = obj.playerName;
+        createPlayerNameText(state, playerCube);
         state.scene.add(playerCube);
         state.players.push(obj.playerName);
+        state.allObjects.push(playerCube);
         console.log(`Added new player ${obj.playerName}`)
         console.log(state.players);
     }
@@ -281,14 +315,16 @@ function addNewPlayer(player, state) {
 
 function addPlayersToScene(playerList, state) {
     for (player in playerList) {
-        console.warn(playerList);
 
         let obj = playerList[player].playerObject;
         let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
             [1, 1, 1], obj.color, false, 1.0);
 
-        playerCube.name = obj.playerName;
+        console.log("GOT PLAYER LIST FROM SERVER");
+        playerCube.playerName = obj.playerName;
+        createPlayerNameText(state, playerCube);
         state.scene.add(playerCube);
+        state.allObjects.push(playerCube);
         state.players.push(obj.playerName);
     }
 }

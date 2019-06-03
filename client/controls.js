@@ -1,4 +1,4 @@
-var movementSpeed = 0.08;
+var movementSpeed = 0.12;
 var sensitivity = 0.0065;
 
 function movementControls(state) {
@@ -22,8 +22,41 @@ function movementControls(state) {
             state.player.rotation.y -= event.movementX * sensitivity;
             sendMovementUpdate(state);
         }
-})
+    })
 
+}
+
+function checkForInput(state, forwardVector, sidewaysVector) {
+
+    if (state.keyboard['w']) {
+        moveForward(state, forwardVector);
+        state.keyboard.movementMade = true;
+    }
+    if (state.keyboard['s']) {
+        moveBackward(state, forwardVector);
+        state.keyboard.movementMade = true;
+    }
+    if (state.keyboard['a']) {
+        moveLeft(state, sidewaysVector);
+        state.keyboard.movementMade = true;
+    }
+    if (state.keyboard['d']) {
+        moveRight(state, sidewaysVector);
+        state.keyboard.movementMade = true;
+    }
+
+    if (state.keyboard.movementMade) {
+        sendMovementUpdate(state);
+        state.keyboard.movementMade = false;
+    }
+
+    if (state.keyboard['e']) {
+        if (!state.createdObject) {
+            state.createdObject = true;
+            createObject(state, 1, state.player.position);
+        }
+
+    }
 }
 
 function sendMovementUpdate(state) {
@@ -52,11 +85,20 @@ function moveForward(state, forwardVector) {
     state.camera.position.z += movementSpeed * forwardVector.z;
 }
 function moveBackward(state, forwardVector) {
-    state.player.position.x -= movementSpeed * forwardVector.x;
-    state.player.position.z -= movementSpeed * forwardVector.z;
+    if (!state.collisionMade) {
+        state.player.position.x -= movementSpeed * forwardVector.x;
+        state.player.position.z -= movementSpeed * forwardVector.z;
 
-    state.camera.position.x -= movementSpeed * forwardVector.x;
-    state.camera.position.z -= movementSpeed * forwardVector.z;
+        state.camera.position.x -= movementSpeed * forwardVector.x;
+        state.camera.position.z -= movementSpeed * forwardVector.z;
+    } else {
+        state.player.position.x += movementSpeed * forwardVector.x;
+        state.player.position.z += movementSpeed * forwardVector.z;
+    
+        state.camera.position.x += movementSpeed * forwardVector.x;
+        state.camera.position.z += movementSpeed * forwardVector.z;
+    }
+
 }
 function moveLeft(state, sidewaysVector) {
     state.player.position.x -= movementSpeed * sidewaysVector.x;
