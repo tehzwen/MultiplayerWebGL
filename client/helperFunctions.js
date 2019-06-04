@@ -750,14 +750,14 @@ function createGameObjectsFromServerFetch(state, gameObject) {
 }
 
 function createPlayerNameText(state, playerObject) {
-    console.warn(playerObject);
+    console.warn(playerObject.name);
     if (!state.font) {
         let fontLoader = new THREE.FontLoader();
         fontLoader.load('./fonts/outrun_future_Regular.json',
             function (font) {
                 console.log(font)
                 state.font = font;
-                let text = new THREE.TextGeometry(playerObject.playerName, {
+                let text = new THREE.TextGeometry(playerObject.name, {
                     font: state.font,
                     size: 0.2,
                     height: 0.05,
@@ -789,7 +789,7 @@ function createPlayerNameText(state, playerObject) {
                 console.error(err);
             });
     } else {
-        let text = new THREE.TextGeometry(playerObject.playerName, {
+        let text = new THREE.TextGeometry(playerObject.name, {
             font: state.font,
             size: 0.2,
             height: 0.05,

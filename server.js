@@ -43,7 +43,6 @@ app.get('/gameobjects', cors(), function (req, res) {
 
 io.on('connection', function (socket) {
     //check if player exists already
-
     if (!playerExistsObject(socket.id, state)) {
         let playerListSent = false;
         let playerJoinedSent = false;
@@ -56,17 +55,13 @@ io.on('connection', function (socket) {
                 playerObject[item] = socket.handshake.query[item];
             }
         }
-        state.players = {
-            ...state.players,
-            [socket.id]: {
-                playerObject
-            }
 
-        }
+        state.players[socket.id] = playerObject;
 
         console.log(`Number of players: ${Object.keys(state.players).length},`);
         console.log(state.players);
 
+        
         if (!playerListSent) {
             playerListSent = true;
             let playerList = sendPlayerListForPlayer(socket.id, state);
@@ -78,24 +73,24 @@ io.on('connection', function (socket) {
             for (player in state.players) {
                 //console.log(player);
                 if (player !== socket.id) {
-                    io.to(player.toString()).emit('playerJoined', state.players[socket.id]);
+                    io.to(player).emit('playerJoined', state.players[socket.id]);
                 }
             }
-        }
+        } 
 
     }
 
     socket.on('disconnect', function () {
+        //console.log("DISCONNECT");
+        
         for (player in state.players) {
-            //console.log(player);
             if (player !== socket.id && !state.disconnectSent) {
-                //state.disconnectSent = true;
-                io.to(player.toString()).emit('playerLeft', state.players[socket.id]);
+                io.to(player).emit('playerLeft', state.players[socket.id]);
             }
-        }
+        } 
 
-        delete state.players[socket.id];
-        console.log("DISCONNECT");
+        delete state.players[socket.id]; 
+        
         console.log(`Number of players: ${Object.keys(state.players).length},`);
         console.log(state.players);
 
@@ -107,7 +102,7 @@ io.on('connection', function (socket) {
         for (player in state.players) {
             if (player != userToUpdate) {
                 //console.log(player);
-                io.to(player.toString()).emit('playerUpdate', state.players[userToUpdate]);
+                io.to(player).emit('playerUpdate', state.players[userToUpdate]);
             }
         }
     })
@@ -115,7 +110,7 @@ io.on('connection', function (socket) {
     socket.on('objectCreated', function (newObjectPacket) {
         for (player in state.players) {
             if (newObjectPacket.socketID !== player) {
-                io.to(player.toString()).emit('objectCreated', newObjectPacket);
+                io.to(player).emit('objectCreated', newObjectPacket);
             }
         }
 
@@ -155,7 +150,7 @@ function playerExistsObject(playerName, state) {
 }
 
 function updatePlayer(playerObj, state) {
-    playerObj.playerObject = jsonParseObjectFields(playerObj.playerObject);
+    playerObj = jsonParseObjectFields(playerObj);
     state.players[playerObj.socketID] = { ...state.players[playerObj.socketID], ...playerObj };
     //console.log(state.players[playerObj.socketID]);
     //emit that player has changed to all other players

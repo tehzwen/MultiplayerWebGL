@@ -18,7 +18,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
 
 
-            state.player.playerName = state.playerName;
+            state.player.name = state.playerName;
             let queryVal = createPacket(state);
             socket = io.connect('', { query: queryVal });
             state.socket = socket;
@@ -102,8 +102,6 @@ function main() {
     state.player = playerCube;
 
     scene.add(playerCube);
-
-
 
     controls.enablePan = false;
 
@@ -212,7 +210,7 @@ function main() {
 function createPacket(state) {
 
     let packet = {
-        playerName: state.playerName,
+        name: state.playerName,
         position: JSON.stringify(state.player.position),
         rotation: JSON.stringify(state.player.rotation),
         scale: JSON.stringify(state.player.scale),
@@ -270,102 +268,63 @@ function isPlayerInPlayerList(playerName, state) {
 }
 
 function updatePlayer(player, state) {
-    let playerObj = player.playerObject;
 
-    let playerToUpdate;
-    //console.log(state.players);
-    //console.log(player);
-
-    for (let i = 0; i < state.players.length; i++) {
-        if (playerObj.playerName === state.players[i].name) {
-            playerToUpdate = state.players[i];
-        }
-    }
-
-    //console.log(playerToUpdate);
-    if (playerToUpdate) {
-        state.scene.children[playerToUpdate.objectIndex].position.set(playerObj.position.x, playerObj.position.y, playerObj.position.z);
-        state.scene.children[playerToUpdate.objectIndex].rotation.copy(playerObj.rotation);
-        state.scene.children[playerToUpdate.objectIndex].updateMatrixWorld(true);
-    }
-
-    //map the variables of the mesh to the corresponding values sent from the server
-    /*for (child in state.scene.children) {
-        if (state.scene.children[child].playerName === player.playerObject.playerName) {
-            let scenePlayerToUpdate = state.scene.children[child];
-
-            //position first
-            scenePlayerToUpdate.position.set(playerObj.position.x, playerObj.position.y, playerObj.position.z);
-
-            //rotation next
-            scenePlayerToUpdate.rotation.copy(playerObj.rotation);
-            scenePlayerToUpdate.updateMatrixWorld(true);
-        }
-    } */
-
-    
-
-    //state.scene.children[]
+    let playerToUpdate = state.scene.getObjectByName(player.name);
+    playerToUpdate.position.set(player.position.x, player.position.y, player.position.z);
+    playerToUpdate.rotation.copy(player.rotation);
+    playerToUpdate.updateMatrixWorld(true);
 }
 
 function removePlayer(player, state) {
 
-    //look through player array for this player name, then remove at its index in the scene objects
-    let playerObj = state.players.find((value) => {
-        return value.playerName === player.playerName
-    })
-    state.scene.children[playerObj.objectIndex]
+    let playerWhoLeft = state.scene.getObjectByName(player.name);
 
-    if (state.scene.children[playerObj.objectIndex].children.length > 0) {
-        for (let i = 0; i < state.scene.children[playerObj.objectIndex].children.length; i++) {
-            state.scene.children[playerObj.objectIndex].children[i].geometry.dispose();
-            state.scene.children[playerObj.objectIndex].children[i].material.dispose();
-            state.scene.remove(state.scene.children[playerObj.objectIndex].children[i]);
+    if (playerWhoLeft.children.length > 0) {
+        for (let i = 0; i < playerWhoLeft.children.length; i++) {
+            playerWhoLeft.children[i].geometry.dispose();
+            playerWhoLeft.children[i].material.dispose();
+            state.scene.remove(playerWhoLeft.children[i]);
         }
     }
-
-    state.scene.children[playerObj.objectIndex].geometry.dispose();
-    state.scene.children[playerObj.objectIndex].material.dispose();
-    state.scene.remove(state.scene.children[playerObj.objectIndex]);
+    playerWhoLeft.geometry.dispose();
+    playerWhoLeft.material.dispose();
+    state.scene.remove(playerWhoLeft);
     state.collidableObjects = [];
-    state.players.splice(playerObj.playerListIndex, 1);
-
-
+    state.allObjects.splice(state.allObjects.indexOf(playerWhoLeft), 1);
 
 }
 
 function addNewPlayer(player, state) {
-    //console.log(player);
 
-    if (!isPlayerInPlayerList(player.playerObject.playerName, state)) {
-        let obj = player.playerObject;
-        let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
-            [1, 1, 1], obj.color, false, 1.0);
-        playerCube.playerName = obj.playerName;
+    if (!isPlayerInPlayerList(player.name, state)) {
+        let playerCube = createCube(player.position, player.castShadow, player.receiveShadow, player.visible,
+            [1, 1, 1], player.color, false, 1.0);
+        playerCube.name = player.name;
 
         createPlayerNameText(state, playerCube);
-        state.players.push({ name: obj.playerName, objectIndex: state.scene.children.length, playerListIndex: state.players.length });
+        state.players.push({ name: player.name, objectIndex: state.scene.children.length, playerListIndex: state.players.length }); //indexes are unnecessary here
         state.scene.add(playerCube);
         state.allObjects.push(playerCube);
-        console.log(`Added new player ${obj.playerName}`)
-        console.log(state.players);
-        console.log("here");
+        console.log(`Added new player ${player.name}`)
     }
 }
 
 function addPlayersToScene(playerList, state) {
+    let startIndex = state.scene.children.length;
+
     for (player in playerList) {
-        let obj = playerList[player].playerObject;
+        let obj = playerList[player];
         let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
             [1, 1, 1], obj.color, false, 1.0);
 
         console.log("GOT PLAYER LIST FROM SERVER");
-        playerCube.playerName = obj.playerName;
+        console.log(obj);
+        playerCube.name = obj.name;
         createPlayerNameText(state, playerCube);
-
-        state.allObjects.push(playerCube);
-        state.players.push({ name: obj.playerName, objectIndex: state.scene.children.length, playerListIndex: state.players.length });
+        state.players.push({ name: obj.name, objectIndex: startIndex, playerListIndex: state.players.length });
         state.scene.add(playerCube);
+        state.allObjects.push(playerCube);
+        startIndex++;
     }
 }
 

@@ -61,18 +61,17 @@ function checkForInput(state, forwardVector, sidewaysVector) {
 
 function sendMovementUpdate(state) {
     let packet = {
-        playerObject: {
-            playerName: state.playerName,
-            position: JSON.stringify(state.player.position),
-            rotation: JSON.stringify(state.player.rotation),
-            scale: JSON.stringify(state.player.scale),
-            visible: state.player.visible,
-            castShadow: state.player.castShadow,
-            receiveShadow: state.player.receiveShadow,
-            color: JSON.stringify({ r: state.player.material.color.r, g: state.player.material.color.g, b: state.player.material.color.b })
-        },
+        name: state.playerName,
+        position: JSON.stringify(state.player.position),
+        rotation: JSON.stringify(state.player.rotation),
+        scale: JSON.stringify(state.player.scale),
+        visible: state.player.visible,
+        castShadow: state.player.castShadow,
+        receiveShadow: state.player.receiveShadow,
+        color: JSON.stringify({ r: state.player.material.color.r, g: state.player.material.color.g, b: state.player.material.color.b }),
         socketID: state.socket.id
     }
+
 
     socket.emit('playerUpdate', packet);
 }
@@ -94,7 +93,7 @@ function moveBackward(state, forwardVector) {
     } else {
         state.player.position.x += movementSpeed * forwardVector.x;
         state.player.position.z += movementSpeed * forwardVector.z;
-    
+
         state.camera.position.x += movementSpeed * forwardVector.x;
         state.camera.position.z += movementSpeed * forwardVector.z;
     }
