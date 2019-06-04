@@ -45,7 +45,13 @@ function main() {
         objects: [],
         collidableObjects: [],
         allObjects: [],
-        collisionMade: false
+        collisionMade: false,
+        socketBools: {
+            playerLeft: false,
+            playerJoined: false
+        },
+        removePlayer: null, //player object to be removed
+        addPlayer: null //player object to be added
     };
 
     let color = document.getElementById("colorSelect").value;
@@ -126,12 +132,14 @@ function main() {
 
             socket.on('playerJoined', function (player) {
                 //add new player to scene
-                addNewPlayer(player, state);
+                //addNewPlayer(player, state);
+                state.socketBools.playerJoined = true;
+                state.addPlayer = player;
             })
 
-            socket.on('playerLeft', function (player) {
-                console.warn("Player left");
-                removePlayer(player, state);
+            socket.once('playerLeft', function (player) {
+                state.removePlayer = player;
+                state.socketBools.playerLeft = true;
             })
 
             socket.on('playerUpdate', function (playerToUpdate) {
@@ -181,15 +189,21 @@ function main() {
             }
         }
 
+        //console.log(state);
+
         checkForInput(state, forwardVector, sidewaysVector);
         collidableDistanceCheck(state, 3);
-        //console.log(state.collidableObjects);
-
-        //controls.update();
-        //state.camera.rotation.y += 0.5;
         requestAnimationFrame(animate);
         renderer.render(scene, camera);
         state.collisionMade = false;
+        if (state.socketBools.playerLeft) {
+            state.socketBools.playerLeft = false;
+            removePlayer(state.removePlayer, state);
+        }
+        if (state.socketBools.playerJoined) {
+            state.socketBools.playerJoined = false;
+            addNewPlayer(state.addPlayer, state);
+        }
     }
     animate();
 
@@ -245,20 +259,38 @@ function initObjects(state) {
 }
 
 function isPlayerInPlayerList(playerName, state) {
-    for (let i = 0; i < state.players.length; i++) {
-        if (playerName === state.players[i]) {
-            return true;
-        }
-    }
+    let playerObj = state.players.find((value) => {
+        return value.playerName === playerName
+    })
 
+    if (playerObj !== undefined) {
+        return true;
+    }
     return false;
 }
 
 function updatePlayer(player, state) {
     let playerObj = player.playerObject;
 
+    let playerToUpdate;
+    //console.log(state.players);
+    //console.log(player);
+
+    for (let i = 0; i < state.players.length; i++) {
+        if (playerObj.playerName === state.players[i].name) {
+            playerToUpdate = state.players[i];
+        }
+    }
+
+    //console.log(playerToUpdate);
+    if (playerToUpdate) {
+        state.scene.children[playerToUpdate.objectIndex].position.set(playerObj.position.x, playerObj.position.y, playerObj.position.z);
+        state.scene.children[playerToUpdate.objectIndex].rotation.copy(playerObj.rotation);
+        state.scene.children[playerToUpdate.objectIndex].updateMatrixWorld(true);
+    }
+
     //map the variables of the mesh to the corresponding values sent from the server
-    for (child in state.scene.children) {
+    /*for (child in state.scene.children) {
         if (state.scene.children[child].playerName === player.playerObject.playerName) {
             let scenePlayerToUpdate = state.scene.children[child];
 
@@ -269,35 +301,42 @@ function updatePlayer(player, state) {
             scenePlayerToUpdate.rotation.copy(playerObj.rotation);
             scenePlayerToUpdate.updateMatrixWorld(true);
         }
-    }
+    } */
+
+    
+
+    //state.scene.children[]
 }
 
 function removePlayer(player, state) {
-    for (child in state.scene.children) {
-        //console.log(state.scene.children[child].name + " vs. " + player.playerObject.playerName);
-        if (state.scene.children[child].playerName === player.playerObject.playerName) {
 
-            if (state.scene.children[child].children.length > 0) {
-                for (let i = 0; i < state.scene.children[child].children.length; i++) {
-                    state.scene.children[child].children[i].geometry.dispose();
-                    state.scene.children[child].children[i].material.dispose();
-                    state.scene.remove(state.scene.children[child].children[i]);
-                }
-            }
-            //remove from players array
-            state.collidableObjects = [];
-            state.scene.children[child].geometry.dispose();
-            state.scene.children[child].material.dispose();
+    //look through player array for this player name, then remove at its index in the scene objects
+    let playerObj = state.players.find((value) => {
+        return value.playerName === player.playerName
+    })
+    state.scene.children[playerObj.objectIndex]
 
-            state.allObjects.splice(state.allObjects.indexOf(state.scene.children[child]), 1);
-            state.players.splice(state.players.indexOf(player.playerObject.playerName), 1);
-            state.scene.remove(state.scene.children[child]);
-            
+    if (state.scene.children[playerObj.objectIndex].children.length > 0) {
+        for (let i = 0; i < state.scene.children[playerObj.objectIndex].children.length; i++) {
+            state.scene.children[playerObj.objectIndex].children[i].geometry.dispose();
+            state.scene.children[playerObj.objectIndex].children[i].material.dispose();
+            state.scene.remove(state.scene.children[playerObj.objectIndex].children[i]);
         }
     }
+
+    state.scene.children[playerObj.objectIndex].geometry.dispose();
+    state.scene.children[playerObj.objectIndex].material.dispose();
+    state.scene.remove(state.scene.children[playerObj.objectIndex]);
+    state.collidableObjects = [];
+    state.players.splice(playerObj.playerListIndex, 1);
+
+
+
 }
 
 function addNewPlayer(player, state) {
+    //console.log(player);
+
     if (!isPlayerInPlayerList(player.playerObject.playerName, state)) {
         let obj = player.playerObject;
         let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
@@ -305,17 +344,17 @@ function addNewPlayer(player, state) {
         playerCube.playerName = obj.playerName;
 
         createPlayerNameText(state, playerCube);
+        state.players.push({ name: obj.playerName, objectIndex: state.scene.children.length, playerListIndex: state.players.length });
         state.scene.add(playerCube);
-        state.players.push(obj.playerName);
         state.allObjects.push(playerCube);
         console.log(`Added new player ${obj.playerName}`)
         console.log(state.players);
+        console.log("here");
     }
 }
 
 function addPlayersToScene(playerList, state) {
     for (player in playerList) {
-
         let obj = playerList[player].playerObject;
         let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
             [1, 1, 1], obj.color, false, 1.0);
@@ -323,9 +362,10 @@ function addPlayersToScene(playerList, state) {
         console.log("GOT PLAYER LIST FROM SERVER");
         playerCube.playerName = obj.playerName;
         createPlayerNameText(state, playerCube);
-        state.scene.add(playerCube);
+
         state.allObjects.push(playerCube);
-        state.players.push(obj.playerName);
+        state.players.push({ name: obj.playerName, objectIndex: state.scene.children.length, playerListIndex: state.players.length });
+        state.scene.add(playerCube);
     }
 }
 

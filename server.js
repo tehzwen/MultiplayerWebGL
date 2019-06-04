@@ -11,13 +11,14 @@ client.connect();
 
 var state = {
     players: {},
-    objects: []
+    objects: [],
+    disconnectSent: false
 }
 
-app.use(function(req, res, next) {
-	  res.header("Access-Control-Allow-Origin", "*");
-	  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-	  next();
+app.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
 });
 
 app.use(express.static('client'));
@@ -33,7 +34,7 @@ app.get('/gameobjects', cors(), function (req, res) {
         if (error) {
             res.sendStatus(500);
         }
-	res.setHeader('Access-Control-Allow-Origin', "*");
+        res.setHeader('Access-Control-Allow-Origin', "*");
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(results.rows));
     })
@@ -85,10 +86,10 @@ io.on('connection', function (socket) {
     }
 
     socket.on('disconnect', function () {
-
         for (player in state.players) {
             //console.log(player);
-            if (player !== socket.id) {
+            if (player !== socket.id && !state.disconnectSent) {
+                //state.disconnectSent = true;
                 io.to(player.toString()).emit('playerLeft', state.players[socket.id]);
             }
         }
