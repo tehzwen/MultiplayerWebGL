@@ -45,13 +45,16 @@ function main() {
         objects: [],
         collidableObjects: [],
         allObjects: [],
+        npcs: [],
         collisionMade: false,
         socketBools: {
             playerLeft: false,
-            playerJoined: false
+            playerJoined: false,
+            npcMoved: false
         },
         removePlayer: null, //player object to be removed
-        addPlayer: null //player object to be added
+        addPlayer: null, //player object to be added
+        movedNPC: null
     };
 
     let color = document.getElementById("colorSelect").value;
@@ -147,6 +150,16 @@ function main() {
             socket.on('objectCreated', function (createdObject) {
                 loadCreatedObject(state, createdObject);
             })
+
+            socket.once('npcMove', function (npc) {
+                state.movedNPC = npc;
+                state.socketBools.npcMoved = true;
+            })
+
+            socket.once('npcEat', function (foodObj) {
+                console.log(foodObj);
+                removeObjectFromScene(state, foodObj);
+            })
         }
         let forwardVector = state.camera.getWorldDirection(new THREE.Vector3());
         let sidewaysVector = new THREE.Vector3();
@@ -201,6 +214,11 @@ function main() {
         if (state.socketBools.playerJoined) {
             state.socketBools.playerJoined = false;
             addNewPlayer(state.addPlayer, state);
+        }
+        if (state.socketBools.npcMoved) {
+            state.socketBools.npcMoved = false;
+            addNPC(state, state.movedNPC);
+
         }
     }
     animate();
@@ -330,5 +348,37 @@ function addPlayersToScene(playerList, state) {
 
 function createRandomNumber(max, min) {
     return Math.random() * (max - min) + min;
+}
+
+function addNPC(state, npc) {
+
+    if (state.npcs.indexOf(npc.npcName) === -1) {
+        let npcObj = createCube(npc.currentPosition, true, true, [1, 1, 1], true, { r: 0.5, g: 0.0, b: 0.3 }, false, 1.0);
+        npcObj.name = npc.npcName;
+        state.npcs.push(npc.npcName);
+        state.scene.add(npcObj);
+        state.allObjects.push(npcObj);
+
+    } else {
+        let movedNPC = state.scene.getObjectByName(npc.npcName);
+        movedNPC.position.x = npc.currentPosition.x;
+        movedNPC.position.y = npc.currentPosition.y;
+        movedNPC.position.z = npc.currentPosition.z;
+    }
+    state.socketBools.movedNPC = false;
+    state.movedNPC = null;
+}
+
+function removeObjectFromScene(state, objectName) {
+    let objectToRemove = state.scene.getObjectByName(objectName);
+    if (objectToRemove) {
+        objectToRemove.geometry.dispose();
+        objectToRemove.material.dispose();
+        state.scene.remove(objectToRemove);
+        state.collidableObjects = [];
+        state.allObjects.splice(state.allObjects.indexOf(objectToRemove), 1);
+    }
+    //console.log(objectToRemove);
+
 }
 

@@ -27,6 +27,8 @@ function collidableDistanceCheck(state, distanceThreshold) {
 }
 
 
+
+
 /**
  * 
  * @param @param {Object{x,y,z} of position of cube} position 
@@ -90,21 +92,19 @@ function createCubeWithTexture(position, castShadow, receiveShadow, visible, geo
  * @param {Boolean for whether object receives a shadow or not} receiveShadow 
  * @param {Array[l,w,d] for creating the geometry of the object} geometryVals 
  * @param {Boolean for whether the object is visible} visible 
- * @param {Hex value representing color} color 
+ * @param {rgb object of the cone's color} color 
  * @param {Boolean for whether the object is transparent} transparent 
  * @param {Opacity value for the pyramid} opacity 
  */
-function createPyramid(position, castShadow, receiveShadow, geometryVals, visible, color, transparent, opacity) {
+function createCone(position, castShadow, receiveShadow, geometryVals, visible, color, transparent, opacity) {
 
-    color = parseInt(color, 16);
     let geometry = new THREE.ConeGeometry(geometryVals[0], geometryVals[1], geometryVals[2]);
     let material = new THREE.MeshPhongMaterial({
-        color: color,
         transparent: transparent,
         opacity: opacity
     });
     let cone = new THREE.Mesh(geometry, material);
-
+    cone.material.color = color;
     cone.position.x = position[0];
     cone.position.y = position[1];
     cone.position.z = position[2];
@@ -744,6 +744,7 @@ function createGameObjectsFromServerFetch(state, gameObject) {
         cube.scale.x = gameObject.scale[0];
         cube.scale.y = gameObject.scale[1];
         cube.scale.z = gameObject.scale[2];
+        cube.name = gameObject.name;
         state.allObjects.push(cube);
         state.scene.add(cube);
     }
@@ -851,6 +852,7 @@ function createObject(state, objectTypeID, position) {
     //create a cube
     if (objectTypeID === 1) {
         let cube = createCube(position, true, true, true, [1, 1, 1], { r: Math.random(), g: Math.random(), b: Math.random() }, false, 1.0);
+        cube.name = Date.now() + "cube";
         state.scene.add(cube);
         state.allObjects.push(cube);
         let packet = {
@@ -860,6 +862,7 @@ function createObject(state, objectTypeID, position) {
             position: position,
             objectTypeID,
             scale: [1, 1, 1], //can add scale customization later
+            name: cube.name,
             uuid: cube.uuid
         }
         state.socket.emit('objectCreated', packet);
