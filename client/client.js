@@ -157,7 +157,6 @@ function main() {
             })
 
             socket.once('npcEat', function (foodObj) {
-                console.log(foodObj);
                 removeObjectFromScene(state, foodObj);
             })
         }
@@ -351,16 +350,31 @@ function createRandomNumber(max, min) {
 }
 
 function addNPC(state, npc) {
-
+    
     if (state.npcs.indexOf(npc.npcName) === -1) {
-        let npcObj = createCube(npc.currentPosition, true, true, [1, 1, 1], true, { r: 0.5, g: 0.0, b: 0.3 }, false, 1.0);
+        let npcObj = createCube(npc.currentPosition, true, true, [1, 1, 1], true, { r: npc.color[0], g: npc.color[1], b: npc.color[2] }, false, 1.0);
+        //apply scale 
+        npcObj.scale.x = npc.scale.x;
+        npcObj.scale.y = npc.scale.y;
+        npcObj.scale.z = npc.scale.z;
         npcObj.name = npc.npcName;
         state.npcs.push(npc.npcName);
         state.scene.add(npcObj);
         state.allObjects.push(npcObj);
 
-    } else {
+    } else { //doing update on npc
         let movedNPC = state.scene.getObjectByName(npc.npcName);
+        //apply scale
+        movedNPC.scale.x = npc.scale.x;
+        movedNPC.scale.y = npc.scale.y;
+        movedNPC.scale.z = npc.scale.z;
+
+        //apply color 
+        movedNPC.material.color.r = npc.color[0];
+        movedNPC.material.color.g = npc.color[1];
+        movedNPC.material.color.b = npc.color[2];
+
+        //apply transformation
         movedNPC.position.x = npc.currentPosition.x;
         movedNPC.position.y = npc.currentPosition.y;
         movedNPC.position.z = npc.currentPosition.z;
@@ -370,6 +384,8 @@ function addNPC(state, npc) {
 }
 
 function removeObjectFromScene(state, objectName) {
+
+
     let objectToRemove = state.scene.getObjectByName(objectName);
     if (objectToRemove) {
         objectToRemove.geometry.dispose();

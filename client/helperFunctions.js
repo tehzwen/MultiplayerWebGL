@@ -836,11 +836,13 @@ function setupGameFont(state) {
 }
 
 function loadCreatedObject(state, packet) {
+    //should probably check if this object exists already or not
     //create a cube
     if (packet.objectTypeID === 1) {
         //check if this object has already been made
         if (state.objects.indexOf(packet.uuid) === -1) {
             let obj = createCube(packet.position, true, true, true, packet.geometry, packet.color, false, 1.0);
+            obj.name = packet.name;
             state.objects.push(packet.uuid);
             state.allObjects.push(obj);
             state.scene.add(obj);
