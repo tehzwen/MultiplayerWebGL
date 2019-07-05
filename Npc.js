@@ -9,14 +9,22 @@ class Npc {
         this.moveMade = false;
         this.name = npcName;
         this.state = state;
+        this.moveSpeed = 0.05;
+        this.timeDelay = 50;
+        this.destination = {
+            status: false,
+            direction: "",
+            endVector: null
+        }
         this.target = {
             movingToward: false,
-            directionVector: null,
+            targetVector: null,
             targetPosition: null
         }
         this.scale = { x: 1.0, y: 1.0, z: 1.0 }
         this.color = [0.5, 0.2, 0.0];
 
+        this.moveTowardTarget = this.moveTowardTarget.bind(this);
         this.moveRight = this.moveRight.bind(this);
         this.moveLeft = this.moveLeft.bind(this);
         this.moveBackward = this.moveBackward.bind(this);
@@ -28,7 +36,6 @@ class Npc {
 
     startMainLoop() {
         this.distanceCheck();
-
         this.moveMade = false;
         this.move();
 
@@ -36,69 +43,133 @@ class Npc {
     }
 
     move() {
+        var moveFunc;
 
-        let decision = Math.floor(Math.random() * 4);
-        let moveFunc;
+        //check if a destination is already plotted and if it is then we move to it
+        if (this.destination.status) {
+            if (this.destination.direction === "forward") {
+                moveFunc = this.moveForward;
+            } else if (this.destination.direction === "backward") {
+                moveFunc = this.moveBackward;
+            } else if (this.destination.direction === "left") {
+                moveFunc = this.moveLeft;
+            } else if (this.destination.direction === "right") {
+                moveFunc = this.moveRight;
+            } else if (this.destination.direction === "target") {
+                moveFunc = this.moveTowardTarget;
+            }
+            //console.log(this.destination)
+            setTimeout(() => {
+                moveFunc();
+                this.startMainLoop();
+            }, Math.random() * this.timeDelay);
 
-        if (this.target.movingToward) {
-            moveFunc = this.moveTowardTarget();
+        } else {
+            //console.log(this.target)
+            moveFunc = this.moveForward; // initial movement so we can get the ball rolling
+
+
+            let decision = Math.floor(Math.random() * 4);
+            this.destination.endVector = { ...this.position }
+
+            if (this.target.movingToward) {
+                this.destination.direction = "target";
+                this.destination.status = true;
+            } else if (decision === 0) {
+                //move forward
+                this.destination.direction = "forward";
+                this.destination.endVector.z += 1.0;
+                this.destination.status = true;
+            } else if (decision === 1) {
+                //move backward
+                this.destination.direction = "backward";
+                this.destination.endVector.z -= 1.0;
+                this.destination.status = true;
+            } else if (decision === 2) {
+                // move left
+                this.destination.direction = "left";
+                this.destination.endVector.x += 1.0;
+                this.destination.status = true;
+            } else if (decision === 3) {
+                // move right
+                this.destination.direction = "right";
+                this.destination.endVector.x -= 1.0;
+                this.destination.status = true;
+            }
+
+            //console.log(this.destination)
+
+            setTimeout(() => {
+                moveFunc();
+                this.startMainLoop();
+            }, Math.random() * this.timeDelay);
         }
-
-        if (decision === 0) {
-            //move forward
-            moveFunc = this.moveForward;
-        } else if (decision === 1) {
-            //move backward
-            moveFunc = this.moveBackward;
-        } else if (decision === 2) {
-            // move left
-            moveFunc = this.moveLeft;
-        } else if (decision === 3) {
-            // move right
-            moveFunc = this.moveRight;
-        }
-
-        setTimeout(() => {
-            moveFunc();
-            this.startMainLoop();
-        }, Math.random() * 500);
     }
 
     moveForward() {
-        this.position.z += 1;
-        let packet = {
-            npcName: this.name,
-            currentPosition: this.position
+        //check if we have reached the destination end vector, if not lets move slowly toward it
+        if (this.position.z <= this.destination.endVector.z) {
+            this.position.z += this.moveSpeed;
+        } else {
+            this.destination = {
+                status: false,
+                endVector: null,
+                direction: ""
+            }
         }
+
         this.emitMoveToPlayers();
     }
 
     moveBackward() {
-        this.position.z -= 1;
-        let packet = {
-            npcName: this.name,
-            currentPosition: this.position
+        if (this.position.z >= this.destination.endVector.z) {
+            this.position.z -= this.moveSpeed;
+        } else {
+            this.destination = {
+                status: false,
+                endVector: null,
+                direction: ""
+            }
         }
+
         this.emitMoveToPlayers();
     }
 
     moveLeft() {
-        this.position.x += 1;
-        let packet = {
-            npcName: this.name,
-            currentPosition: this.position
+        if (this.position.x <= this.destination.endVector.x) {
+            this.position.x += this.moveSpeed;
+        } else {
+            this.destination = {
+                status: false,
+                endVector: null,
+                direction: ""
+            }
         }
         this.emitMoveToPlayers();
     }
 
     moveRight() {
-        this.position.x -= 1;
 
-        let packet = {
-            npcName: this.name,
-            currentPosition: this.position
+        if (this.position.x >= this.destination.endVector.x) {
+            this.position.x -= this.moveSpeed;
+        } else {
+            this.destination = {
+                status: false,
+                endVector: null,
+                direction: ""
+            }
         }
+
         this.emitMoveToPlayers();
+    }
+
+    lerpInVector(vectorChar, magnitude) {
+        if (this.position[vectorChar] !== this.position[vectorChar] + magnitude) {
+            this.position[vectorChar] += magnitude / 10;
+            return this.lerpInVector(vectorChar, magnitude - 0.5)
+        } else {
+            return;
+        }
     }
 
     emitMoveToPlayers() {
@@ -111,13 +182,11 @@ class Npc {
         for (let player in this.state.players) {
             this.io.to(player).emit('npcMove', packet);
         }
-
         return;
     }
 
     emitEatToPlayers(objectName, object) {
         for (let player in this.state.players) {
-            console.log(player);
             this.io.to(player).emit('npcEat', objectName);
         }
         //fire db query to kill this cube from the database
@@ -144,19 +213,18 @@ class Npc {
         let vx = v1.x - v2.x;
         let vy = v1.y - v2.y;
         let vz = v1.z - v2.z;
-
         return { x: vx, y: vy, z: vz };
     }
 
     divideArrayByScalar(arr, scalar) {
         return arr.map((val) => {
-            return val/scalar;
+            return val / scalar;
         })
     }
 
     addArrays(arr1, arr2) {
         //check if arrays are equal length
-        if(arr1.length === arr2.length) {
+        if (arr1.length === arr2.length) {
             let tempArr = [];
             for (let i = 0; i < arr1.length; i++) {
                 tempArr.push(arr1[i] + arr2[i]);
@@ -166,14 +234,18 @@ class Npc {
             console.error("Arrays must be of equal size to add");
             return null;
         }
-
-        
     }
 
     moveTowardTarget() {
         this.target.targetVector = this.subractVectors(this.target.targetPosition, this.position);
-        this.position.x += this.target.targetVector.x * 0.12;
-        this.position.z += this.target.targetVector.z * 0.12;
+        this.position.x += this.target.targetVector.x * 0.02;
+        this.position.z += this.target.targetVector.z * 0.02;
+
+        let packet = {
+            npcName: this.name,
+            currentPosition: this.position
+        }
+        this.emitMoveToPlayers();
     }
 
     distanceCheck() {
@@ -198,28 +270,25 @@ class Npc {
                 this.target.movingToward = true;
                 this.target.targetPosition = objectVector.position;
 
-
                 //eat at this distance
                 if (distance < 2) {
-                    this.target.movingToward = false;
+
                     console.log(Date.now() + "Ate a cube " + objectVector.name);
-                    
+
                     //add colors in a way that we dont reach complete white but we mix our colors with that which we ate
                     let eatenColorChange = this.divideArrayByScalar(objectVector.color, 3);
                     this.color = this.addArrays(this.divideArrayByScalar(this.color, 1.5), eatenColorChange);
                     this.scale.x += 0.5;
                     this.scale.y += 0.5;
                     this.scale.z += 0.5;
+                    this.target.movingToward = false;
+                    this.destination.direction = "";
+                    this.destination.status = false;
                     this.emitEatToPlayers(objectVector.name, this.state.objects[object]);
                 }
-
             }
-
-
         }
-
     }
-
 }
 
 module.exports = Npc

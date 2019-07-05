@@ -34,6 +34,7 @@ app.get('/', function (req, res) {
 
 app.get('/gameobjects', cors(), function (req, res) {
     //go to database and get gameobjects & their types
+    console.log("QUERY FOR GAME OBJECTS");
     client.query('SELECT * FROM gameobject LEFT OUTER JOIN gameobjecttype ON (gameobject.gameobjecttypeid = gameobjecttype.id) ', (error, results) => {
         if (error) {
             res.sendStatus(500);

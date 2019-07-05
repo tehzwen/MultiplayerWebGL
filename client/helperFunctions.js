@@ -737,7 +737,8 @@ function getCenterPoint(mesh) {
 }
 
 function createGameObjectsFromServerFetch(state, gameObject) {
-    //creating a cube
+    console.log(gameObject);
+    //creating cubes
     if (gameObject.gameobjecttypeid === 1) {
         let color = { r: gameObject.color[0], g: gameObject.color[1], b: gameObject.color[2] };
         let cube = createCube({ x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, true, true, true, [1, 1, 1], color, false, 1.0);
@@ -747,6 +748,9 @@ function createGameObjectsFromServerFetch(state, gameObject) {
         cube.name = gameObject.name;
         state.allObjects.push(cube);
         state.scene.add(cube);
+    } else if (gameObject.gameobjecttypeid === 2) { //plane
+        console.warn("HERE!!!!!");
+        setupPlane(state, gameObject.positionx);
     }
 }
 

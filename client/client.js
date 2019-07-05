@@ -265,6 +265,7 @@ function initObjects(state) {
         .then((data) => {
             //iterate through data and create objects 
             data.map((item) => {
+                console.log(item);
                 createGameObjectsFromServerFetch(state, item);
             })
         })
