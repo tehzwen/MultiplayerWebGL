@@ -7,28 +7,33 @@ window.addEventListener('DOMContentLoaded', (event) => {
 
     //listener for button click
     button.onclick = (function () {
-        //hide main menu here
-        if (document.getElementById("playerName").value != "") {
-            document.getElementById("loginDiv").style.display = "none";
-
-            main();
-            state.playerName = document.getElementById("playerName").value;
-
-            //determine color from select
-
-
-
-            state.player.name = state.playerName;
-            let queryVal = createPacket(state);
-            socket = io.connect('', { query: queryVal });
-            state.socket = socket;
+        if (document.getElementById("playerName").value === "") {
+            createLoginErrorText("* Username is required");
         } else {
-            let errorMessage = document.getElementById("userNameErrorText");
-            errorMessage.style.display = "";
+            //check if the username isnt already taken first
+            fetch("http://localhost:3000/login?username=" + document.getElementById("playerName").value)
+                .then((res) => {
+                    return res.json()
+                        .then((data) => {
+                            if (data.valid) {
+                                document.getElementById("loginDiv").style.display = "none"; //hide main menu here
+                                main();
+                                state.playerName = document.getElementById("playerName").value;
+                                //determine color from select
+                                state.player.name = state.playerName;
+                                let queryVal = createPacket(state);
+                                socket = io.connect('', { query: queryVal });
+                                state.socket = socket;
+                            } else {
+                                createLoginErrorText("* Username is already taken");
+                            }
+                        })
+                })
+                .catch((err) => {
+                    console.error(err);
+                })
         }
-
     });
-
 });
 
 function main() {
@@ -115,7 +120,7 @@ function main() {
     //var controls = new THREE.PointerLockControls(state.camera);
     //state.scene.add(state.controls.getObject()); //camera is still slightly broken
 
-    setupGameFont(state);
+    //setupGameFont(state);
 
 
     /**
@@ -165,43 +170,21 @@ function main() {
         sidewaysVector.crossVectors(forwardVector, state.player.up);
 
         //check collisions
+        state.player.updateMatrixWorld(true);
 
         if (state.collidableObjects.length > 0) {
-            for (var vertexIndex = 0; vertexIndex < state.player.geometry.vertices.length; vertexIndex++) {
-                var localVertex = state.player.geometry.vertices[vertexIndex].clone();
-                var globalVertex = localVertex.applyMatrix4(state.player.matrix)
-                //var globalVertex = state.player.matrix.multiplyVector3(localVertex);
-                var directionVector = globalVertex.sub(state.player.position);
-
-                var ray = new THREE.Raycaster(state.player.position, directionVector.clone().normalize());
-                var collisionResults = ray.intersectObjects(state.collidableObjects);
-
-                // This will check the collision with other objects. If it detects collision, the player will be unable to move
-                if (collisionResults.length > 0 && collisionResults[0].distance < directionVector.length()) {
-
-                    let collisionVector = new THREE.Vector3();
-
-
-                    state.collisionMade = true;
-
-                    collisionVector.subVectors(state.player.position, collisionResults[0].point).normalize();
-
-
-                    let sideColVector = new THREE.Vector3();
-                    sideColVector.crossVectors(collisionVector, state.player.up);
-                    forwardVector = collisionVector;
-                    sidewaysVector = sideColVector;
+            var box = new THREE.Box3().setFromObject(state.player); //create collision box for player
+            var collision = false;
+            state.collidableObjects.map((object) => {
+                var otherBox = new THREE.Box3().setFromObject(object); //create collision box for nearby object
+                if (box.intersectsBox(otherBox)) {
+                    collision = { status: true, collided: object };
                 }
-                else {
-                    // Else, the player can move forwards
+            })
 
-                }
-            }
         }
 
-        //console.log(state);
-
-        checkForInput(state, forwardVector, sidewaysVector);
+        checkForInput(state, forwardVector, sidewaysVector, collision);
         collidableDistanceCheck(state, 3);
         requestAnimationFrame(animate);
         renderer.render(scene, camera);
@@ -242,20 +225,6 @@ function createPacket(state) {
     return packet;
 }
 
-function determineLowestDifference(vec1, vec2) {
-    let xDiff = Math.abs(vec1.x - vec2.x);
-    let yDiff = Math.abs(vec1.y - vec2.y);
-    let zDiff = Math.abs(vec1.z - vec2.z);
-
-    if (xDiff < zDiff) {
-        return "x";
-    } else if (zDiff < xDiff) {
-        return "z";
-    } else {
-        return "No idea";
-    }
-}
-
 function initObjects(state) {
     //send get request for existing game object data
     fetch(serverIP + ":3000/gameobjects", { mode: 'cors' })
@@ -265,7 +234,6 @@ function initObjects(state) {
         .then((data) => {
             //iterate through data and create objects 
             data.map((item) => {
-                console.log(item);
                 createGameObjectsFromServerFetch(state, item);
             })
         })
@@ -288,28 +256,31 @@ function isPlayerInPlayerList(playerName, state) {
 function updatePlayer(player, state) {
 
     let playerToUpdate = state.scene.getObjectByName(player.name);
-    playerToUpdate.position.set(player.position.x, player.position.y, player.position.z);
-    playerToUpdate.rotation.copy(player.rotation);
-    playerToUpdate.updateMatrixWorld(true);
+
+    if (playerToUpdate) {
+        playerToUpdate.position.set(player.position.x, player.position.y, player.position.z);
+        playerToUpdate.rotation.copy(player.rotation);
+        playerToUpdate.updateMatrixWorld(true);
+    }
+
 }
 
 function removePlayer(player, state) {
 
     let playerWhoLeft = state.scene.getObjectByName(player.name);
 
-    if (playerWhoLeft.children.length > 0) {
+    if (playerWhoLeft && playerWhoLeft.children.length > 0) {
         for (let i = 0; i < playerWhoLeft.children.length; i++) {
             playerWhoLeft.children[i].geometry.dispose();
             playerWhoLeft.children[i].material.dispose();
             state.scene.remove(playerWhoLeft.children[i]);
         }
+        playerWhoLeft.geometry.dispose();
+        playerWhoLeft.material.dispose();
+        state.scene.remove(playerWhoLeft);
+        state.collidableObjects = [];
+        state.allObjects.splice(state.allObjects.indexOf(playerWhoLeft), 1);
     }
-    playerWhoLeft.geometry.dispose();
-    playerWhoLeft.material.dispose();
-    state.scene.remove(playerWhoLeft);
-    state.collidableObjects = [];
-    state.allObjects.splice(state.allObjects.indexOf(playerWhoLeft), 1);
-
 }
 
 function addNewPlayer(player, state) {
@@ -351,7 +322,7 @@ function createRandomNumber(max, min) {
 }
 
 function addNPC(state, npc) {
-    
+
     if (state.npcs.indexOf(npc.npcName) === -1) {
         let npcObj = createCube(npc.currentPosition, true, true, [1, 1, 1], true, { r: npc.color[0], g: npc.color[1], b: npc.color[2] }, false, 1.0);
         //apply scale 

@@ -26,23 +26,35 @@ function movementControls(state) {
 
 }
 
-function checkForInput(state, forwardVector, sidewaysVector) {
+function checkForInput(state, forwardVector, sidewaysVector, collision) {
 
-    if (state.keyboard['w']) {
-        moveForward(state, forwardVector);
+    if (collision && collision.status) { //collision has occured
+        let oppositeDir = new THREE.Vector3();
+        oppositeDir.subVectors(state.player.position, collision.collided.position);
+        // var arrowHelper = new THREE.ArrowHelper(oppositeDir, state.player.position, 1, 0xffff00)
+        // state.scene.add(arrowHelper);
+
+        moveCollision(state, oppositeDir);
         state.keyboard.movementMade = true;
-    }
-    if (state.keyboard['s']) {
-        moveBackward(state, forwardVector);
-        state.keyboard.movementMade = true;
-    }
-    if (state.keyboard['a']) {
-        moveLeft(state, sidewaysVector);
-        state.keyboard.movementMade = true;
-    }
-    if (state.keyboard['d']) {
-        moveRight(state, sidewaysVector);
-        state.keyboard.movementMade = true;
+
+
+    } else {
+        if (state.keyboard['w']) {
+            moveForward(state, forwardVector);
+            state.keyboard.movementMade = true;
+        }
+        if (state.keyboard['s']) {
+            moveBackward(state, forwardVector);
+            state.keyboard.movementMade = true;
+        }
+        if (state.keyboard['a']) {
+            moveLeft(state, sidewaysVector);
+            state.keyboard.movementMade = true;
+        }
+        if (state.keyboard['d']) {
+            moveRight(state, sidewaysVector);
+            state.keyboard.movementMade = true;
+        }
     }
 
     if (state.keyboard.movementMade) {
@@ -53,7 +65,12 @@ function checkForInput(state, forwardVector, sidewaysVector) {
     if (state.keyboard['e']) {
         if (!state.createdObject) {
             state.createdObject = true;
-            createObject(state, 1, state.player.position);
+            let placementVector = new THREE.Vector3();
+            let forwardVectorProper = forwardVector.clone();
+            forwardVectorProper.multiplyScalar(2);
+            forwardVectorProper.y = state.player.position.y;
+            placementVector.addVectors(state.player.position, forwardVectorProper);
+            createObject(state, 1, placementVector);
         }
 
     }
@@ -74,6 +91,14 @@ function sendMovementUpdate(state) {
 
 
     socket.emit('playerUpdate', packet);
+}
+
+function moveCollision(state, collisionVector) {
+    state.player.position.x += (movementSpeed / 4) * collisionVector.x;
+    state.player.position.z += (movementSpeed / 4) * collisionVector.z;
+
+    state.camera.position.x += (movementSpeed / 4) * collisionVector.x;
+    state.camera.position.z += (movementSpeed / 4) * collisionVector.z;
 }
 
 function moveForward(state, forwardVector) {

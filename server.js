@@ -44,7 +44,18 @@ app.get('/gameobjects', cors(), function (req, res) {
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify(results.rows));
     })
+})
 
+app.get('/login', (req, res) => {
+    let valid = true;
+
+    for (let player in state.players) {
+        if (state.players[player].name === req.query.username) {
+            valid = false;
+        }
+    }
+
+    res.send({valid});
 })
 
 io.on('connection', function (socket) {

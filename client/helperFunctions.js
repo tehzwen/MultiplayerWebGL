@@ -26,9 +26,6 @@ function collidableDistanceCheck(state, distanceThreshold) {
     }
 }
 
-
-
-
 /**
  * 
  * @param @param {Object{x,y,z} of position of cube} position 
@@ -46,6 +43,7 @@ function createCube(position, castShadow, receiveShadow, visible, geometryVals, 
     var geometry = new THREE.BoxGeometry(geometryVals[0], geometryVals[1], geometryVals[2]);
     var material = new THREE.MeshPhongMaterial({ transparent: transparent, opacity: opacity });
     var cube = new THREE.Mesh(geometry, material);
+
     cube.material.color = color;
     cube.position.x = position.x;
     cube.position.y = position.y;
@@ -53,6 +51,7 @@ function createCube(position, castShadow, receiveShadow, visible, geometryVals, 
     cube.castShadow = castShadow;
     cube.receiveShadow = receiveShadow;
     cube.visible = visible;
+    cube.geometry.computeBoundingBox();
 
     return cube;
 }
@@ -116,156 +115,6 @@ function createCone(position, castShadow, receiveShadow, geometryVals, visible, 
     return cone;
 }
 
-
-/**
- * 
- * @param {State variable holding all game info} state 
- * @param {Which direction we intend to move the ship} direction 
- * @purpose This was a rotation function planned to be used to rotate 
- * the ship in the direction being moved toward with the mouse. Was
- * never actually used in production.
- */
-function rotateShip(state, direction) {
-    var ship = state.objects[state.selectedIndex];
-    let turnRate = 0.005;
-
-    if (direction === "Left") {
-        ship.rotation.z -= turnRate;
-    }
-    else if (direction === "Right") {
-        ship.rotation.z += turnRate;
-    }
-
-    else if (direction === "Up") {
-        ship.rotation.x += turnRate;
-    }
-
-    else if (direction === "Down") {
-        ship.rotation.x -= turnRate;
-    }
-}
-
-/**
- * 
- * @param {state variable holding game info} state 
- * @purpose Updates the ships position every frame based off of where the mouse is
- */
-function updateShipPosition(state) {
-    var ship = state.ship;
-    var camera = state.camera;
-    var mouseX = state.mouseX;
-    var mouseY = state.mouseY;
-    let speed = 0.0009;
-
-    if (state.healthVal > 0) {
-
-        if (state.mouseX > 700 || state.mouseX < -700) {
-
-            if (state.flySounds.length <= 0) {
-
-                var rand = state.flySoundsPaths[Math.floor(Math.random() * state.flySoundsPaths.length)];
-                let sound = playSound(state, rand, state.audioLoader, 0.15, false)
-                state.flySounds.push(sound);
-            }
-            else {
-                if (state.flySounds[0].isPlaying) {
-                }
-                else {
-                    state.flySounds.pop();
-                }
-            }
-        }
-
-        //move left
-        if (state.mouseX > 0 && ship.position.x < state.canal.x0) {
-            //console.log("MOVING MOUSE");
-            ship.position.x += mouseX * speed;
-            camera.position.x += mouseX * speed;
-            state.mouseX += mouseX * speed;
-            state.plane.position.x += mouseX * speed;
-            state.collisionBox.position.x += mouseX * speed;
-        }
-        //move right
-        else if (state.mouseX < 0 && ship.position.x > state.canal.x1) {
-            //console.log(Math.abs(mouseX) * speed);
-            ship.position.x -= Math.abs(mouseX) * speed;
-            camera.position.x -= Math.abs(mouseX) * speed;
-            state.mousex -= Math.abs(mouseX) * speed;
-            state.plane.position.x -= Math.abs(mouseX) * speed;
-            state.collisionBox.position.x -= Math.abs(mouseX) * speed;
-        }
-        //move up
-        if (mouseY > 0 && ship.position.y < state.canal.y0) {
-
-            ship.position.y += mouseY * speed;
-            camera.position.y += mouseY * speed;
-            state.mouseY += mouseY * speed;
-            state.collisionBox.position.y += mouseY * speed;
-        }
-        //move down
-        else if (mouseY < 0) {
-
-            //check if above plane
-            if (ship.position.y > -2) {
-                ship.position.y -= Math.abs(mouseY) * speed;
-                camera.position.y -= Math.abs(mouseY) * speed;
-                state.mouseY -= Math.abs(mouseY) * speed;
-                state.collisionBox.position.y -= Math.abs(mouseY) * speed;
-            }
-        }
-    }
-}
-
-
-/**
- * 
- * @param {State variable holding all game information} state 
- * @purpose Listens for mouse movement and calculates mouse offset from center
- */
-function setupMouseMove(state) {
-    document.addEventListener("mousemove", (event) => {
-        if (state.ship) {
-            /*Get offset of mouse from screen center */
-            let movementX = window.innerWidth / 2 - event.clientX;
-            let movementY = window.innerHeight / 2 - event.clientY;
-
-            if (event.ctrlKey) {
-
-                if (movementX > 0) {
-                    state.camera.rotation.y -= 0.002;
-                }
-                else if (movementX < 0) {
-                    state.camera.rotation.y += 0.002;
-                }
-
-                if (movementY > 0) {
-                    state.camera.rotation.x -= 0.002;
-                }
-
-                else if (movementY < 0) {
-                    state.camera.rotation.x += 0.002;
-                }
-            }
-            else {
-                if (movementX > 0) {
-                    state.mouseX = movementX;
-                }
-                else if (movementX < 0) {
-                    state.mouseX = movementX;
-                }
-
-                if (movementY > 0) {
-                    state.mouseY = movementY;
-                }
-
-                else if (movementY < 0) {
-                    state.mouseY = movementY;
-                }
-            }
-        }
-
-    });
-}
 
 /**
  * 
@@ -375,143 +224,6 @@ function loadModelNoMaterial(state, objURL, initialPosition, isPlayer, color, ca
 
 /**
  * 
- * @param {Game State variable} state 
- * @purpose Function to move camera to the ship and return from
- */
-function moveCameraToShip(state) {
-
-    if (!state.firstPersonCam) {
-        smoothCameraMovementToZ(state, state.ship.position.z, true);
-    }
-    else {
-        smoothCameraMovementToZ(state, state.ship.position.z - 15);
-    }
-}
-
-/**
- * 
- * @param {Game State variable} state 
- * @param {Z value that we would like to move towards} zVal 
- * @param {boolean flag for determining if we are moving to the ship or not to adjust y values} returnToShip 
- * @purpose Smoothly move camera to Z position
- */
-function smoothCameraMovementToZ(state, zVal, returnToShip) {
-
-    //check if we return to the ship or not
-    if (returnToShip) {
-        //move camera to appropriate y value
-        smoothCameraMovementToY(state, state.ship.position.y);
-
-        //if the z value is less than current camera z
-        if (state.camera.position.z > zVal) {
-            state.camera.position.z -= 0.5;
-        }
-        //if the z value is greater than current camera z
-        else if (state.camera.position.z < zVal) {
-            state.camera.position.z += 0.5;
-        }
-        //we have reached our destination so we set flags to stop camera movement
-        else {
-            state.moveCam = false;
-            state.firstPersonCam = !state.firstPersonCam;
-        }
-
-    }
-
-    //not returning to ship but need to move to z coordinate
-    else {
-        //if the z value is less than current camera z
-        if (state.camera.position.z > zVal) {
-            state.camera.position.z -= 0.5;
-        }
-        //if the z value is greater than current camera z
-        else if (state.camera.position.z < zVal) {
-            state.camera.position.z += 0.5;
-        }
-        //we have reached our destination so we set flags to stop camera movement
-        else {
-            state.moveCam = false;
-            state.firstPersonCam = !state.firstPersonCam;
-        }
-    }
-
-}
-
-/**
- * 
- * @param {Game state variable} state 
- * @param {y value to move towards} yVal 
- * @purpose Smoothly moves camera to Y position
- */
-function smoothCameraMovementToY(state, yVal) {
-
-    if (state.camera.position.y > yVal) {
-        state.camera.position.y -= 0.5;
-    }
-    else if (state.camera.position.y < yVal) {
-        state.camera.position.y += 0.5;
-    }
-}
-
-/**
- * 
- * @param {State variable holding all game info} state
- * @purpose Keyboard controls for moving camera
- */
-function setupKeypresses(state) {
-    document.addEventListener("keydown", (event) => {
-
-        if (state.ship) {
-            switch (event.code) {
-                case "KeyC":
-                    state.moveCam = !state.moveCam;
-                    break;
-
-                default:
-                    break;
-            }
-        }
-    });
-}
-
-/**
- * 
- * @param {holds game info} state 
- * @param {length of tube} lengthVal 
- * @param {color for the tube} color 
- * @param {array containing the points} pointsArray 
- * @param {tubular segment value} tubularSeg 
- * @param {radius for tube} radius 
- * @param {number of segments in radial direction} radialSeg 
- * @param {boolean to determine if tube is closed} closed 
- * @purpose Was a function we made to create tubes but never implemented fully
- */
-function createTube(state, lengthVal, color, pointsArray, tubularSeg, radius, radialSeg, closed) {
-
-    let pathBase = new THREE.CatmullRomCurve3(pointsArray);
-    state.tube.curve = pathBase;
-
-    let tubeGeo = new THREE.TubeBufferGeometry(pathBase, tubularSeg, radius, radialSeg, closed);
-    tubeGeo.needsUpdate = true;
-    state.tube.tubeGeo = tubeGeo;
-
-    let tubeMat = new THREE.MeshPhongMaterial({
-        side: THREE.BackSide,
-        color: color
-    });
-
-    state.tube.mat = tubeMat;
-
-    let mesh = new THREE.Mesh(tubeGeo, tubeMat);
-    //mesh.position.z = 30;   
-    state.tube.object = mesh;
-    state.objects.push(mesh);
-    state.scene.add(mesh);
-}
-
-
-/**
- * 
  * @param {State variable holding all the game info} state 
  * @purpose Creates the base plane for the game and stores it in state.plane
  */
@@ -534,76 +246,6 @@ function setupPlane(state, position) {
     state.plane = plane;
 
     state.scene.add(plane);
-}
-
-/**
- * 
- * @param {Game state variable} state 
- * @param {collision game object} collision 
- * @purpose Checks collision types and calls functions depending on those types/subtypes
- */
-function checkCollision(state, collision) {
-
-    //detect if collision is a wall and remove health if that is the case
-    if (collision.type === "wall" && !state.invincible) {
-        state.moving = false;
-        if (state.healthVal > 0) {
-            state.healthVal -= 0.25;
-        }
-
-    }
-    //detect when the collision is of type powerup and take appropriate action
-    else if (collision.type === "powerup" && !state.collisionMade) {
-        state.collisionMade = true;
-
-        //if points, play sound, add points
-        if (collision.effect === "points") {
-
-            //play r2 beep, increment score text
-            state.scoreVal += 0.5;
-            playSound(state, '../sounds/R2D2Beep.mp3', state.audioLoader, 0.25, false, false);
-        }
-
-        //if health add health up to 100 and add some points
-        else if (collision.effect === "health") {
-            state.scoreVal += 0.8;
-            if (state.healthVal < 100) {
-                if (state.healthVal + 5 > 100) {
-                    state.healthVal = 100;
-                }
-                else {
-                    state.healthVal += 0.5;
-                }
-            }
-            //play R2 Health
-            playSound(state, '../sounds/R2D2Health.wav', state.audioLoader, 0.25, false, false);
-        }
-
-        //when red powerup we make the ship temporarily able to pass through walls and not take damage for 
-        else if (collision.effect === "invincible") {
-            //play scream sound 
-            playSound(state, '../sounds/R2D2Scream.wav', state.audioLoader, 0.25, false, false);
-            state.invincible = true;
-            state.invincibleTime = Date.now();
-            changeShipOpacity(state, 0.5);
-        }
-
-        //remove the powerup from the scene
-        collision.geometry.dispose();
-        collision.material.dispose();
-        state.scene.remove(collision);
-        state.collisionMade = false;
-    }
-
-    //if we reach the finish line we reset the game
-    else if (collision.type === "finish") {
-        resetGame(state);
-    }
-
-    //set moving to true if no collisions
-    else {
-        state.moving = true;
-    }
 }
 
 /**
@@ -698,19 +340,6 @@ function checkIfSoundsPlaying(state) {
 /**
  * 
  * @param {Game state variable} state 
- * @param {Variable to show how fast rotate speed} rotateSpeed 
- * @purpose Function used to rotate powerups in place
- */
-function rotatePowerUps(state, rotateSpeed) {
-    for (let i = 0; i < state.powerUpObjects.length; i++) {
-        state.powerUpObjects[i].rotateY(rotateSpeed);
-        state.powerUpObjects[i].rotateZ(rotateSpeed);
-    }
-}
-
-/**
- * 
- * @param {Game state variable} state 
  * @purpose Updates the text values each frame
  */
 function updateTextValues(state) {
@@ -727,7 +356,6 @@ function float2int(value) {
     return value | 0;
 }
 
-
 function getCenterPoint(mesh) {
     var geometry = mesh.geometry;
     geometry.computeBoundingBox();
@@ -737,7 +365,6 @@ function getCenterPoint(mesh) {
 }
 
 function createGameObjectsFromServerFetch(state, gameObject) {
-    console.log(gameObject);
     //creating cubes
     if (gameObject.gameobjecttypeid === 1) {
         let color = { r: gameObject.color[0], g: gameObject.color[1], b: gameObject.color[2] };
@@ -755,12 +382,10 @@ function createGameObjectsFromServerFetch(state, gameObject) {
 }
 
 function createPlayerNameText(state, playerObject) {
-    console.warn(playerObject.name);
     if (!state.font) {
         let fontLoader = new THREE.FontLoader();
         fontLoader.load('./fonts/outrun_future_Regular.json',
             function (font) {
-                console.log(font)
                 state.font = font;
                 let text = new THREE.TextGeometry(playerObject.name, {
                     font: state.font,
@@ -877,4 +502,10 @@ function createObject(state, objectTypeID, position) {
     setTimeout(function () {
         state.createdObject = false
     }, 500);
+}
+
+function createLoginErrorText(text) {
+    let errorMessage = document.getElementById("userNameErrorText");
+    errorMessage.innerHTML = text;
+    errorMessage.style.display = "";
 }
