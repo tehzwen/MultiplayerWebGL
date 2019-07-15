@@ -195,7 +195,7 @@ io.on('Something', function (socket) {
 
 http.listen(3000, function () {
     console.log('listening on *:3000');
-    client.query('SELECT * FROM gameobject LEFT OUTER JOIN gameobjecttype ON (gameobject.gameobjecttypeid = gameobjecttype.id) ', (error, results) => {
+    client.query('SELECT * FROM gameobject LEFT OUTER JOIN gameobjecttype ON (gameobject.gameobjecttypeid = gameobjecttype.id) where gameobject.gameobjecttypeid=1 ', (error, results) => {
         for (let object in results.rows) {
             state.objects.push(results.rows[object]);
         }

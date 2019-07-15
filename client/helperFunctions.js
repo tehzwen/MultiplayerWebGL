@@ -227,22 +227,47 @@ function loadModelNoMaterial(state, objURL, initialPosition, isPlayer, color, ca
  * @param {State variable holding all the game info} state 
  * @purpose Creates the base plane for the game and stores it in state.plane
  */
-function setupPlane(state, position) {
+function setupPlane(state, position, materialURL) {
     let side = 120;
-    geometry = new THREE.PlaneGeometry(side * 5, side * 10);
-    let material = new THREE.MeshStandardMaterial({
-        roughness: 0.8,
-        color: new THREE.Color(0x777777),
-        side: THREE.FrontSide
+    let geometry = new THREE.PlaneGeometry(side * 15, side * 15);
+    let material, texture;
+
+    if (materialURL) {
+        texture = new THREE.TextureLoader().load(materialURL)
+        texture.minFilter = THREE.LinearFilter;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(4, 4);
+        material = new THREE.MeshPhongMaterial({
+            map: texture,
+            side: THREE.FrontSide,
+        });
+    } else {
+        material = new THREE.MeshStandardMaterial({
+            roughness: 0.8,
+            color: new THREE.Color(0x777777),
+            side: THREE.FrontSide,
+
+        });
+    }
+
+
+
+    /**
+     * let texture = new THREE.TextureLoader().load(textureURL);
+    let geometry = new THREE.BoxGeometry(geometryVals[0], geometryVals[1], geometryVals[2]);
+    let material = new THREE.MeshBasicMaterial({
+        map: texture
     });
+     */
     plane = new THREE.Mesh(geometry, material);
     plane.castShadow = false;
     plane.receiveShadow = true;
     plane.renderSingleSided = false;
-    plane.position.x = 0;
-    plane.position.y = -5;
-    plane.position.z = 0;
-    plane.rotation.x = 11;
+    plane.position.x = position.x;
+    plane.position.y = position.y;
+    plane.position.z = position.z;
+    plane.rotation.x = -Math.PI / 2;
     state.plane = plane;
 
     state.scene.add(plane);
@@ -366,6 +391,7 @@ function getCenterPoint(mesh) {
 
 function createGameObjectsFromServerFetch(state, gameObject) {
     //creating cubes
+    console.log(gameObject.gameobjecttypeid);
     if (gameObject.gameobjecttypeid === 1) {
         let color = { r: gameObject.color[0], g: gameObject.color[1], b: gameObject.color[2] };
         let cube = createCube({ x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, true, true, true, [1, 1, 1], color, false, 1.0);
@@ -377,7 +403,7 @@ function createGameObjectsFromServerFetch(state, gameObject) {
         state.scene.add(cube);
     } else if (gameObject.gameobjecttypeid === 2) { //plane
         console.warn("HERE!!!!!");
-        setupPlane(state, gameObject.positionx);
+        setupPlane(state, { x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, '../images/concrete.jpg');
     }
 }
 
