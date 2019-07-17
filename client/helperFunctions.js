@@ -62,15 +62,43 @@ function createCube(position, castShadow, receiveShadow, visible, geometryVals, 
  * @param {Boolean whether cube will cast a shadow or not} castShadow 
  * @param {Boolean whether cube will receive a shadow or not} receiveShadow 
  * @param {Boolean whether cube is visible or not} visible 
- * @param {Array[l,w,d] of geometry values for cube} geometryVals 
+ * @param {Array[l,w,d] of geometry values for cube} geometryVals,
+ * @param {Object{r,g,b} for color of cube to be made} color 
  * @param {Path for texture to be loaded} textureURL 
  * @purpose Creates cubes with textures loaded onto them and adds to scene
  */
-function createCubeWithTexture(position, castShadow, receiveShadow, visible, geometryVals, textureURL) {
+function createCubeWithTexture(position, castShadow, receiveShadow, visible, geometryVals, color, textureURL, bmapURL) {
+    let repetitions = 2;
     let texture = new THREE.TextureLoader().load(textureURL);
     let geometry = new THREE.BoxGeometry(geometryVals[0], geometryVals[1], geometryVals[2]);
-    let material = new THREE.MeshBasicMaterial({
-        map: texture
+    let material, bmap, newColor;
+
+    if (color.r) {
+        newColor = 0x220000;
+    } else if (color.g) {
+        newColor = 0x002200;
+    } else {
+        newColor = 0x000022;
+    }
+
+    bmap = new THREE.TextureLoader().load(bmapURL);
+    bmap.wrapS = THREE.MirroredRepeatWrapping;
+    bmap.wrapT = THREE.MirroredRepeatWrapping;
+    bmap.repeat.set(repetitions / 2, repetitions);
+
+    texture = new THREE.TextureLoader().load(textureURL);
+    texture.wrapS = THREE.MirroredRepeatWrapping;
+    texture.wrapT = THREE.MirroredRepeatWrapping;
+    texture.repeat.set(repetitions / 2, repetitions);
+
+    material = new THREE.MeshPhongMaterial({
+        map: texture,
+        bumpScale: 0.9,
+        bumpMap: bmap,
+        emissive: newColor,
+        specular: 0xf,
+        side: THREE.FrontSide,
+        shininess: 1
     });
 
     let cube = new THREE.Mesh(geometry, material);
@@ -104,13 +132,63 @@ function createCone(position, castShadow, receiveShadow, geometryVals, visible, 
     });
     let cone = new THREE.Mesh(geometry, material);
     cone.material.color = color;
-    cone.position.x = position[0];
-    cone.position.y = position[1];
-    cone.position.z = position[2];
+    cone.position.x = position.x;
+    cone.position.y = position.y;
+    cone.position.z = position.z;
     cone.castShadow = castShadow;
     cone.receiveShadow = receiveShadow;
     cone.visible = visible;
-    cone.type = "powerup";
+
+    return cone;
+}
+
+/**
+ * 
+ * @param {Array[x,y,z] holding position of pyramid} position 
+ * @param {Boolean for whether object casts a shadow or not} castShadow 
+ * @param {Boolean for whether object receives a shadow or not} receiveShadow 
+ * @param {Array[l,w,d] for creating the geometry of the object} geometryVals 
+ * @param {Boolean for whether the object is visible} visible 
+ * @param {rgb object of the cone's color} color 
+ * @param {Boolean for whether the object is transparent} transparent 
+ * @param {Opacity value for the pyramid} opacity 
+ */
+function createConeWithTexture(position, castShadow, receiveShadow, geometryVals, visible, color, transparent, opacity, textureURL, bmapURL) {
+
+    let repetitions = 1;
+    let geometry = new THREE.ConeGeometry(geometryVals[0], geometryVals[1], geometryVals[2]);
+    let texture = new THREE.TextureLoader().load(textureURL);
+    let material, bmap;
+
+    bmap = new THREE.TextureLoader().load(bmapURL);
+    /*bmap.wrapS = THREE.MirroredRepeatWrapping;
+    bmap.wrapT = THREE.MirroredRepeatWrapping;
+    bmap.repeat.set(repetitions / 2, repetitions);*/
+
+    texture = new THREE.TextureLoader().load(textureURL);
+    /*texture.wrapS = THREE.MirroredRepeatWrapping;
+    texture.wrapT = THREE.MirroredRepeatWrapping;
+    texture.repeat.set(repetitions / 2, repetitions);*/
+
+    material = new THREE.MeshPhongMaterial({
+        map: texture,
+        bumpScale: 0.9,
+        bumpMap: bmap,
+        side: THREE.FrontSide,
+        specular: 0xff0000,
+        shininess: 1
+    });
+
+    let cone = new THREE.Mesh(geometry, material);
+    cone.material.color = color;
+    cone.position.x = position.x;
+    cone.position.y = position.y;
+    cone.position.z = position.z;
+    cone.castShadow = castShadow;
+    cone.receiveShadow = receiveShadow;
+    cone.visible = visible;
+    cone.transparent = transparent;
+    cone.opacity = opacity;
 
     return cone;
 }
@@ -227,19 +305,32 @@ function loadModelNoMaterial(state, objURL, initialPosition, isPlayer, color, ca
  * @param {State variable holding all the game info} state 
  * @purpose Creates the base plane for the game and stores it in state.plane
  */
-function setupPlane(state, position, materialURL) {
+function setupPlane(state, position, materialURL, bmapURL) {
+    let repetitions = 200;
     let side = 120;
     let geometry = new THREE.PlaneGeometry(side * 15, side * 15);
-    let material, texture;
+    let material, texture, bmap;
 
-    if (materialURL) {
-        texture = new THREE.TextureLoader().load(materialURL)
-        texture.minFilter = THREE.LinearFilter;
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(4, 4);
+    if (materialURL && bmapURL) {
+        bmap = new THREE.TextureLoader().load(bmapURL);
+
+        //bmap.minFilter = THREE.LinearFilter;
+        bmap.wrapS = THREE.MirroredRepeatWrapping;
+        bmap.wrapT = THREE.MirroredRepeatWrapping;
+        bmap.repeat.set(repetitions / 2, repetitions);
+
+        texture = new THREE.TextureLoader().load(materialURL);
+        //texture.minFilter = THREE.LinearFilter;
+        texture.wrapS = THREE.MirroredRepeatWrapping;
+        texture.wrapT = THREE.MirroredRepeatWrapping;
+        texture.repeat.set(repetitions / 2, repetitions);
         material = new THREE.MeshPhongMaterial({
             map: texture,
+            bumpMap: bmap,
+            emissive: 0x0,
+            specular: 0x0,
+            bumpScale: 5,
+            shininess: 1,
             side: THREE.FrontSide,
         });
     } else {
@@ -251,15 +342,6 @@ function setupPlane(state, position, materialURL) {
         });
     }
 
-
-
-    /**
-     * let texture = new THREE.TextureLoader().load(textureURL);
-    let geometry = new THREE.BoxGeometry(geometryVals[0], geometryVals[1], geometryVals[2]);
-    let material = new THREE.MeshBasicMaterial({
-        map: texture
-    });
-     */
     plane = new THREE.Mesh(geometry, material);
     plane.castShadow = false;
     plane.receiveShadow = true;
@@ -391,7 +473,6 @@ function getCenterPoint(mesh) {
 
 function createGameObjectsFromServerFetch(state, gameObject) {
     //creating cubes
-    console.log(gameObject.gameobjecttypeid);
     if (gameObject.gameobjecttypeid === 1) {
         let color = { r: gameObject.color[0], g: gameObject.color[1], b: gameObject.color[2] };
         let cube = createCube({ x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, true, true, true, [1, 1, 1], color, false, 1.0);
@@ -402,8 +483,15 @@ function createGameObjectsFromServerFetch(state, gameObject) {
         state.allObjects.push(cube);
         state.scene.add(cube);
     } else if (gameObject.gameobjecttypeid === 2) { //plane
-        console.warn("HERE!!!!!");
-        setupPlane(state, { x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, '../images/concrete.jpg');
+        setupPlane(state, { x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, '../images/concrete.jpg', '../images/concrete_inverted.png');
+    } else if (gameObject.gameobjecttypeid === 3) { //plantfood
+        let color = { r: gameObject.color[0], g: gameObject.color[1], b: gameObject.color[2] };
+        let food = createConeWithTexture({ x: gameObject.positionx, y: gameObject.positiony, z: gameObject.positionz }, true, true, [2, 3, 4], true, color, false, 1.0, '../images/food.jpg', '../images/food_inverted.jpg')
+        food.scale.x = gameObject.scale[0];
+        food.scale.y = gameObject.scale[1];
+        food.scale.z = gameObject.scale[2];
+        food.name = gameObject.name;
+        state.scene.add(food);
     }
 }
 
@@ -534,4 +622,13 @@ function createLoginErrorText(text) {
     let errorMessage = document.getElementById("userNameErrorText");
     errorMessage.innerHTML = text;
     errorMessage.style.display = "";
+}
+
+function componentToHex(c) {
+    var hex = c.toString(16);
+    return hex.length == 1 ? "0" + hex : hex;
+}
+
+function rgbToHex(r, g, b) {
+    return parseInt("0x" + componentToHex(r) + componentToHex(g) + componentToHex(b), 16);
 }

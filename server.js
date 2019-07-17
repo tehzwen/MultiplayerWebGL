@@ -5,6 +5,7 @@ var io = require('socket.io')(http);
 var pg = require('pg');
 var connString = "postgres://test:Entropy@localhost:5432/entropy";
 const cors = require('cors');
+var _ = require('lodash')
 var Npc = require('./Npc.js')
 
 var client = new pg.Client(connString);
@@ -16,7 +17,13 @@ var state = {
     disconnectSent: false
 }
 
-let something = new Npc(state, io, client, { x: 0.0, y: 0.0, z: 0.0 }, "Khan");
+//let something = new Npc(state, io, client, { x: 0.0, y: 0.0, z: 0.0 }, "Khan");
+
+let npcArray = [];
+
+for (let i = 0; i < 5; i++) {
+    npcArray.push(new Npc(state, io, client, { x: 0.0, y: 0.0, z: 0.0 + i }, "Khan" + i))
+}
 
 
 app.use(function (req, res, next) {
@@ -31,6 +38,11 @@ app.use(express.static('client'));
 app.get('/', function (req, res) {
     res.sendFile(__dirname + '/client/client.html');
 });
+
+/*
+app.get('/', function (req, res) {
+    res.sendFile(__dirname + '/client/ascii.html');
+});*/
 
 app.get('/gameobjects', cors(), function (req, res) {
     //go to database and get gameobjects & their types
@@ -55,7 +67,7 @@ app.get('/login', (req, res) => {
         }
     }
 
-    res.send({valid});
+    res.send({ valid });
 })
 
 io.on('connection', function (socket) {
@@ -136,7 +148,7 @@ io.on('connection', function (socket) {
             positiony: newObjectPacket.position.y,
             positionz: newObjectPacket.position.z,
             id: newObjectPacket.objectTypeID,
-            color:[newObjectPacket.color.r, newObjectPacket.color.g, newObjectPacket.color.b],
+            color: [newObjectPacket.color.r, newObjectPacket.color.g, newObjectPacket.color.b],
             scale: newObjectPacket.scale,
             name: newObjectPacket.name
         }
@@ -146,7 +158,7 @@ io.on('connection', function (socket) {
         //insert object into database but first check if it has already been accounted for
         if (state.objects.indexOf(newObjectPacket.uuid) === -1) {
             console.log(newObjectPacket.name);
-            
+
             client.query(`INSERT INTO gameobject (positionx, positiony, gameobjecttypeid, positionz, color, scale, name) 
                 VALUES(${newObjectPacket.position.x}, ${newObjectPacket.position.y},
                  ${newObjectPacket.objectTypeID}, ${newObjectPacket.position.z}, '{${newObjectPacket.color.r}, 
@@ -200,7 +212,12 @@ http.listen(3000, function () {
             state.objects.push(results.rows[object]);
         }
     })
-    something.startMainLoop();
+
+    _.map(npcArray, (npc) => {
+        npc.startMainLoop();
+    })
+
+    //something.startMainLoop();
 });
 
 function jsonParseObjectFields(object) {

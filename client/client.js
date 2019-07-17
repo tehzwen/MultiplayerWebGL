@@ -16,7 +16,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
                     return res.json()
                         .then((data) => {
                             if (data.valid) {
-                                document.getElementById("loginDiv").style.display = "none"; //hide main menu here
+
                                 main();
                                 state.playerName = document.getElementById("playerName").value;
                                 //determine color from select
@@ -24,6 +24,9 @@ window.addEventListener('DOMContentLoaded', (event) => {
                                 let queryVal = createPacket(state);
                                 socket = io.connect('', { query: queryVal });
                                 state.socket = socket;
+                                let element = document.getElementById("loginDiv");
+                                console.log(element.parentNode);
+                                element.parentElement.removeChild(element);
                             } else {
                                 createLoginErrorText("* Username is already taken");
                             }
@@ -74,39 +77,77 @@ function main() {
         state.color = { r: 1.0, g: 1.0, b: 1.0 }
     }
 
+    console.log(color);
+
     initObjects(state);
 
     movementControls(state);
     //mouseLookControls(state);
 
-    let clock = new THREE.Clock();
-    var scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xffffff);
-    state.scene = scene;
+    var ascii = false;
+
+    if (!ascii) {
+        //SETUP REGULAR GL
+        var scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+
+        var renderer = new THREE.WebGLRenderer({ powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+
+        document.body.appendChild(renderer.domElement);
+
+        state.scene = scene;
+    } else {
+        //SETUP ASCII GL
+        var scene = new THREE.Scene();
+        state.scene = scene;
+        var renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        var effect = new THREE.AsciiEffect(renderer, ' .:-+*=%@#', { invert: true, resolution: 0.2, });
+        effect.setSize(window.innerWidth, window.innerHeight);
+        effect.domElement.style.color = 'white';
+        effect.domElement.style.backgroundColor = 'black';
+
+        console.log(effect);
+        // Special case: append effect.domElement, instead of renderer.domElement.
+        // AsciiEffect creates a custom domElement (a div container) where the ASCII elements are placed.
+
+        document.body.appendChild(effect.domElement);
+
+        //
+    }
+
+
+    //
+
+
+
+
+
+
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     state.camera = camera;
 
     var controls = new THREE.OrbitControls(state.camera);
     state.controls = controls;
-    //controls.update();
 
-    //create jsonloader 
     let jsonLoader = new THREE.ObjectLoader();
     state.loader = jsonLoader;
 
-    var renderer = new THREE.WebGLRenderer({ powerPreference: "high-performance" });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
-    document.body.appendChild(renderer.domElement);
 
-    let pointLight = createPointLight(0xffffff, 1.0, 100, 1, [0, 1, 0]);
+    //renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
+
+
+    let pointLight = createPointLight(0xffffff, 2.0, 100, 1, [0, 25, 0]);
     scene.add(pointLight);
-    let ambientLight = createAmbientLight(0xffffff, 0.25);
+    let ambientLight = createAmbientLight(0x0, 0.5);
     scene.add(ambientLight);
 
-    let playerCube = createCube({ x: createRandomNumber(15, -15), y: 0, z: 0 }, true, true, true, [1, 1, 1],
-        state.color, false, 1.0);
+    //let playerCube = createCube({ x: createRandomNumber(15, -15), y: 0, z: 0 }, true, true, true, [1, 1, 1], state.color, false, 1.0);
+
+    let playerCube = createCubeWithTexture({ x: createRandomNumber(15, -15), y: 0, z: 0 }, true, true, true, [1, 1, 1], state.color, './images/brick.jpg', './images/brick_inverted.jpg');
     state.player = playerCube;
 
     scene.add(playerCube);
@@ -117,17 +158,12 @@ function main() {
     state.camera.lookAt(state.player.position);
     controls.target = state.player.position;
 
-    //var controls = new THREE.PointerLockControls(state.camera);
-    //state.scene.add(state.controls.getObject()); //camera is still slightly broken
 
-    //setupGameFont(state);
-
-
-    /**
-     * test of making text over player head
-     */
-    //state.scene.add(new THREE.TextGeometry())
     function animate() {
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
         if (socket) {
             if (!state.socketMessages.receivedInitialPlayerList) {
                 socket.on('playerListSend', function (playerList) {
@@ -187,7 +223,14 @@ function main() {
         checkForInput(state, forwardVector, sidewaysVector, collision);
         collidableDistanceCheck(state, 3);
         requestAnimationFrame(animate);
-        renderer.render(scene, camera);
+
+        if (!ascii) {
+            renderer.render(scene, camera);
+        } else {
+            effect.render(scene, camera);
+        }
+
+
         state.collisionMade = false;
         if (state.socketBools.playerLeft) {
             state.socketBools.playerLeft = false;
@@ -286,8 +329,9 @@ function removePlayer(player, state) {
 function addNewPlayer(player, state) {
 
     if (!isPlayerInPlayerList(player.name, state)) {
-        let playerCube = createCube(player.position, player.castShadow, player.receiveShadow, player.visible,
-            [1, 1, 1], player.color, false, 1.0);
+        //let playerCube = createCube(player.position, player.castShadow, player.receiveShadow, player.visible, [1, 1, 1], player.color, false, 1.0);
+        let playerCube = createCubeWithTexture(player.position, player.castShadow, player.receiveShadow, player.visible, [1, 1, 1], player.color, './images/brick.jpg', './images/brick_inverted.jpg');
+
         playerCube.name = player.name;
 
         createPlayerNameText(state, playerCube);
@@ -303,8 +347,9 @@ function addPlayersToScene(playerList, state) {
 
     for (player in playerList) {
         let obj = playerList[player];
-        let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible,
-            [1, 1, 1], obj.color, false, 1.0);
+        //let playerCube = createCube(obj.position, obj.castShadow, obj.receiveShadow, obj.visible, [1, 1, 1], obj.color, false, 1.0);
+        let playerCube = createCubeWithTexture(obj.position, obj.castShadow, obj.receiveShadow, obj.visible, [1, 1, 1], obj.color, './images/brick.jpg', './images/brick_inverted.jpg');
+
 
         console.log("GOT PLAYER LIST FROM SERVER");
         console.log(obj);

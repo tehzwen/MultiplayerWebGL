@@ -1,4 +1,6 @@
 const math = require('mathjs');
+var THREE = require('./client/three.js-master');
+var _ = require("lodash");
 
 class Npc {
     constructor(state, socket, db, startPosition, npcName) {
@@ -38,12 +40,12 @@ class Npc {
         this.distanceCheck();
         this.moveMade = false;
         this.move();
-
-
     }
 
     move() {
         var moveFunc;
+
+        //console.log(this.destination)
 
         //check if a destination is already plotted and if it is then we move to it
         if (this.destination.status) {
@@ -65,7 +67,7 @@ class Npc {
             }, Math.random() * this.timeDelay);
 
         } else {
-            //console.log(this.target)
+            
             moveFunc = this.moveForward; // initial movement so we can get the ball rolling
 
 
@@ -267,6 +269,7 @@ class Npc {
 
             //check radius around us to detect if nearby a cube
             if (distance < 10) {
+                this.target.objectName = this.state.objects[object].name;
                 this.target.movingToward = true;
                 this.target.targetPosition = objectVector.position;
 
@@ -285,6 +288,12 @@ class Npc {
                     this.destination.direction = "";
                     this.destination.status = false;
                     this.emitEatToPlayers(objectVector.name, this.state.objects[object]);
+                }
+            } else {
+                if (this.target.movingToward && _.findIndex(this.state.objects, ['name', this.target.objectName]) === -1) {
+                    this.target.movingToward = false;
+                    this.destination.direction = "forward";
+                    this.destination.status = false;
                 }
             }
         }
