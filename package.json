@@ -7,6 +7,8 @@
     "lodash": "^4.17.14",
     "mathjs": "^6.0.2",
     "pg": "^7.11.0",
+    "seedrandom": "^3.0.1",
+    "serve-favicon": "^2.5.0",
     "socket.io": "^2.2.0"
   },
   "scripts": {

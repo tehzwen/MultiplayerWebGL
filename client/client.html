@@ -17,6 +17,7 @@
             margin: 0;
             font-weight: bold;
             overflow: hidden;
+            background-image: url('./images/hexagons.gif');
         }
 
         #info {
@@ -64,20 +65,24 @@
     <script src="./setupPage.js"></script>
     <script src="./helperFunctions.js"></script>
     <script src="./controls.js"></script>
-    <script src="./camera.js"></script>
     <script src="./client.js"></script>
 
 
+
     <div id="loginDiv" style="	 position: absolute;
-    padding: 15px 15px 15px 15px;
-    background-color: #3c3e42f2;
-    border-radius: 5px;
-    left: 50%;
-    top: 50%;
-    -webkit-transform: translate(-50%, -50%);
-    transform: translate(-50%, -50%);">
+        padding: 15px 15px 15px 15px;
+        background-color: #3c3e42f2;
+        border-radius: 5px;
+        left: 50%;
+        top: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);">
     </div>
 
+
+    <div id="chatDiv" style="position: absolute; bottom: 0%; display: none;" >
+        <input style="color:#ffffff; background:none; " autofocus type="text" placeholder="Chat..." />
+    </div>
 
 
 </body>

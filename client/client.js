@@ -1,3 +1,6 @@
+const gravity = 0.005;
+let host = "http://68.149.156.169:3000/";
+
 var socket;
 init();
 
@@ -11,7 +14,7 @@ window.addEventListener('DOMContentLoaded', (event) => {
             createLoginErrorText("* Username is required");
         } else {
             //check if the username isnt already taken first
-            fetch("http://localhost:3000/login?username=" + document.getElementById("playerName").value)
+            fetch(host + "login?username=" + document.getElementById("playerName").value)
                 .then((res) => {
                     return res.json()
                         .then((data) => {
@@ -25,7 +28,6 @@ window.addEventListener('DOMContentLoaded', (event) => {
                                 socket = io.connect('', { query: queryVal });
                                 state.socket = socket;
                                 let element = document.getElementById("loginDiv");
-                                console.log(element.parentNode);
                                 element.parentElement.removeChild(element);
                             } else {
                                 createLoginErrorText("* Username is already taken");
@@ -42,10 +44,14 @@ window.addEventListener('DOMContentLoaded', (event) => {
 function main() {
 
     state = {
+        chat: { active: false },
         player: null,
         players: [],
         playerName: null,
-        keyboard: { movementMade: false },
+        keyboard: {
+            movementMade: false,
+            movementActive: true
+        },
         socketMessages: {
             receivedInitialPlayerList: false
         },
@@ -77,8 +83,6 @@ function main() {
         state.color = { r: 1.0, g: 1.0, b: 1.0 }
     }
 
-    console.log(color);
-
     initObjects(state);
 
     movementControls(state);
@@ -89,7 +93,13 @@ function main() {
     if (!ascii) {
         //SETUP REGULAR GL
         var scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xffffff);
+        {
+            const near = 1;
+            const far = 50;
+            const color = 'lightgrey';
+            scene.fog = new THREE.Fog(color, near, far);
+            scene.background = new THREE.Color(color);
+        }
 
         var renderer = new THREE.WebGLRenderer({ powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -119,26 +129,15 @@ function main() {
         //
     }
 
-
-    //
-
-
-
-
-
-
+    //SETUP CAMERA
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     state.camera = camera;
-
-    var controls = new THREE.OrbitControls(state.camera);
-    state.controls = controls;
 
     let jsonLoader = new THREE.ObjectLoader();
     state.loader = jsonLoader;
 
 
-    //renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
-
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // default THREE.PCFShadowMap
 
     let pointLight = createPointLight(0xffffff, 2.0, 100, 1, [0, 25, 0]);
     scene.add(pointLight);
@@ -152,15 +151,13 @@ function main() {
 
     scene.add(playerCube);
 
-    controls.enablePan = false;
-
-    state.camera.position.set(state.player.position.x, 0.0, -5.0);
-    state.camera.lookAt(state.player.position);
-    controls.target = state.player.position;
+    camera.position.x = state.player.position.x;
+    camera.position.y = state.player.position.y;
+    camera.position.z = state.player.position.z;
+    //controls.target = state.player.position;
 
 
     function animate() {
-
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
 
@@ -217,7 +214,6 @@ function main() {
                     collision = { status: true, collided: object };
                 }
             })
-
         }
 
         checkForInput(state, forwardVector, sidewaysVector, collision);
@@ -229,7 +225,6 @@ function main() {
         } else {
             effect.render(scene, camera);
         }
-
 
         state.collisionMade = false;
         if (state.socketBools.playerLeft) {
@@ -270,7 +265,7 @@ function createPacket(state) {
 
 function initObjects(state) {
     //send get request for existing game object data
-    fetch(serverIP + ":3000/gameobjects", { mode: 'cors' })
+    fetch(host + "gameobjects", { mode: 'cors' })
         .then((res) => {
             return res.json();
         })
@@ -299,6 +294,7 @@ function isPlayerInPlayerList(playerName, state) {
 function updatePlayer(player, state) {
 
     let playerToUpdate = state.scene.getObjectByName(player.name);
+    //console.log(player);
 
     if (playerToUpdate) {
         playerToUpdate.position.set(player.position.x, player.position.y, player.position.z);
@@ -310,20 +306,29 @@ function updatePlayer(player, state) {
 
 function removePlayer(player, state) {
 
-    let playerWhoLeft = state.scene.getObjectByName(player.name);
+    if (player && player.name) {
+        let playerWhoLeft = state.scene.getObjectByName(player.name);
 
-    if (playerWhoLeft && playerWhoLeft.children.length > 0) {
-        for (let i = 0; i < playerWhoLeft.children.length; i++) {
-            playerWhoLeft.children[i].geometry.dispose();
-            playerWhoLeft.children[i].material.dispose();
-            state.scene.remove(playerWhoLeft.children[i]);
+        if (playerWhoLeft && playerWhoLeft.children.length > 0) {
+
+            if (playerWhoLeft.children.length > 0) {
+                for (let i = 0; i < playerWhoLeft.children.length; i++) {
+                    playerWhoLeft.children[i].geometry.dispose();
+                    playerWhoLeft.children[i].material.dispose();
+                    state.scene.remove(playerWhoLeft.children[i]);
+                }
+            }
+
+            playerWhoLeft.geometry.dispose();
+            playerWhoLeft.material.dispose();
+            state.scene.remove(playerWhoLeft);
+            state.collidableObjects = [];
+            state.allObjects.splice(state.allObjects.indexOf(playerWhoLeft), 1);
         }
-        playerWhoLeft.geometry.dispose();
-        playerWhoLeft.material.dispose();
-        state.scene.remove(playerWhoLeft);
-        state.collidableObjects = [];
-        state.allObjects.splice(state.allObjects.indexOf(playerWhoLeft), 1);
+    } else {
+        console.error("Player has no name!");
     }
+
 }
 
 function addNewPlayer(player, state) {

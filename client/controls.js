@@ -19,7 +19,15 @@ function movementControls(state) {
 
         if (event.buttons === 1) {
             //rotate player
-            state.player.rotation.y -= event.movementX * sensitivity;
+
+            const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+            const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+            state.player.rotation.y -= movementX * sensitivity;
+
+
+            state.camera.rotation.y -= movementX * sensitivity;
+            //state.camera.rotation.x -= event.movementY * sensitivity;
             sendMovementUpdate(state);
         }
     })
@@ -38,7 +46,7 @@ function checkForInput(state, forwardVector, sidewaysVector, collision) {
         state.keyboard.movementMade = true;
 
 
-    } else {
+    } else if (!state.chat.status) {
         if (state.keyboard['w']) {
             moveForward(state, forwardVector);
             state.keyboard.movementMade = true;
@@ -55,24 +63,24 @@ function checkForInput(state, forwardVector, sidewaysVector, collision) {
             moveRight(state, sidewaysVector);
             state.keyboard.movementMade = true;
         }
+
+        if (state.keyboard['e']) {
+            if (!state.createdObject) {
+                state.createdObject = true;
+                let placementVector = new THREE.Vector3();
+                let forwardVectorProper = forwardVector.clone();
+                forwardVectorProper.multiplyScalar(2);
+                forwardVectorProper.y = state.player.position.y;
+                placementVector.addVectors(state.player.position, forwardVectorProper);
+                createObject(state, 1, placementVector);
+            }
+
+        }
     }
 
     if (state.keyboard.movementMade) {
         sendMovementUpdate(state);
         state.keyboard.movementMade = false;
-    }
-
-    if (state.keyboard['e']) {
-        if (!state.createdObject) {
-            state.createdObject = true;
-            let placementVector = new THREE.Vector3();
-            let forwardVectorProper = forwardVector.clone();
-            forwardVectorProper.multiplyScalar(2);
-            forwardVectorProper.y = state.player.position.y;
-            placementVector.addVectors(state.player.position, forwardVectorProper);
-            createObject(state, 1, placementVector);
-        }
-
     }
 }
 
@@ -88,8 +96,6 @@ function sendMovementUpdate(state) {
         color: JSON.stringify({ r: state.player.material.color.r, g: state.player.material.color.g, b: state.player.material.color.b }),
         socketID: state.socket.id
     }
-
-
     socket.emit('playerUpdate', packet);
 }
 

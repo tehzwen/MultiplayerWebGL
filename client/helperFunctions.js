@@ -353,6 +353,7 @@ function setupPlane(state, position, materialURL, bmapURL) {
     state.plane = plane;
 
     state.scene.add(plane);
+    state.collidableObjects.push(plane);
 }
 
 /**

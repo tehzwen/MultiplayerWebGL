@@ -1,10 +1,8 @@
 const math = require('mathjs');
-var THREE = require('./client/three.js-master');
 var _ = require("lodash");
 
 class Npc {
     constructor(state, socket, db, startPosition, npcName) {
-        //console.log(db);
         this.position = startPosition;
         this.io = socket;
         this.db = db;
@@ -16,7 +14,7 @@ class Npc {
         this.destination = {
             status: false,
             direction: "",
-            endVector: null
+            endVector: { x: 0, y: 0, z: 0 }
         }
         this.target = {
             movingToward: false,
@@ -42,11 +40,13 @@ class Npc {
         this.move();
     }
 
+    //updates the AI on any new changes/additions
+    update() {
+
+    }
+
     move() {
         var moveFunc;
-
-        //console.log(this.destination)
-
         //check if a destination is already plotted and if it is then we move to it
         if (this.destination.status) {
             if (this.destination.direction === "forward") {
@@ -67,42 +67,39 @@ class Npc {
             }, Math.random() * this.timeDelay);
 
         } else {
-            
-            moveFunc = this.moveForward; // initial movement so we can get the ball rolling
 
+            //moveFunc = this.moveForward; // initial movement so we can get the ball rolling
+            this.destination.status = true;
 
+            //let decision = 1;
             let decision = Math.floor(Math.random() * 4);
             this.destination.endVector = { ...this.position }
 
             if (this.target.movingToward) {
                 this.destination.direction = "target";
-                this.destination.status = true;
             } else if (decision === 0) {
                 //move forward
                 this.destination.direction = "forward";
-                this.destination.endVector.z += 1.0;
-                this.destination.status = true;
+                this.destination.endVector.z = this.position.z + 1.0;
             } else if (decision === 1) {
                 //move backward
                 this.destination.direction = "backward";
-                this.destination.endVector.z -= 1.0;
-                this.destination.status = true;
+                this.destination.endVector.z = this.position.z - 1.0;
             } else if (decision === 2) {
                 // move left
                 this.destination.direction = "left";
-                this.destination.endVector.x += 1.0;
-                this.destination.status = true;
+                this.destination.endVector.x = this.position.x + 1.0;
             } else if (decision === 3) {
                 // move right
                 this.destination.direction = "right";
-                this.destination.endVector.x -= 1.0;
-                this.destination.status = true;
+                this.destination.endVector.x = this.position.x - 1.0;
             }
 
-            //console.log(this.destination)
-
             setTimeout(() => {
-                moveFunc();
+                if (moveFunc) {
+                    moveFunc();
+                }
+
                 this.startMainLoop();
             }, Math.random() * this.timeDelay);
         }
@@ -113,11 +110,7 @@ class Npc {
         if (this.position.z <= this.destination.endVector.z) {
             this.position.z += this.moveSpeed;
         } else {
-            this.destination = {
-                status: false,
-                endVector: null,
-                direction: ""
-            }
+            this.destination.status = false;
         }
 
         this.emitMoveToPlayers();
@@ -127,11 +120,7 @@ class Npc {
         if (this.position.z >= this.destination.endVector.z) {
             this.position.z -= this.moveSpeed;
         } else {
-            this.destination = {
-                status: false,
-                endVector: null,
-                direction: ""
-            }
+            this.destination.status = false;
         }
 
         this.emitMoveToPlayers();
@@ -141,11 +130,7 @@ class Npc {
         if (this.position.x <= this.destination.endVector.x) {
             this.position.x += this.moveSpeed;
         } else {
-            this.destination = {
-                status: false,
-                endVector: null,
-                direction: ""
-            }
+            this.destination.status = false;
         }
         this.emitMoveToPlayers();
     }
@@ -155,11 +140,7 @@ class Npc {
         if (this.position.x >= this.destination.endVector.x) {
             this.position.x -= this.moveSpeed;
         } else {
-            this.destination = {
-                status: false,
-                endVector: null,
-                direction: ""
-            }
+            this.destination.status = false;
         }
 
         this.emitMoveToPlayers();
@@ -242,61 +223,61 @@ class Npc {
         this.target.targetVector = this.subractVectors(this.target.targetPosition, this.position);
         this.position.x += this.target.targetVector.x * 0.02;
         this.position.z += this.target.targetVector.z * 0.02;
-
-        let packet = {
-            npcName: this.name,
-            currentPosition: this.position
-        }
         this.emitMoveToPlayers();
     }
 
     distanceCheck() {
-        for (let object in this.state.objects) {
-            //console.log(this.state.objects[object]);
-            let objectVector = {
-                position: {
-                    x: this.state.objects[object].positionx,
-                    y: this.state.objects[object].positiony,
-                    z: this.state.objects[object].positionz
-                },
-                scale: this.scale,
-                name: this.state.objects[object].name,
-                color: this.state.objects[object].color
-            }
-
-
-            let distance = this.vectorDistance(this.position, objectVector.position)
-
-            //check radius around us to detect if nearby a cube
-            if (distance < 10) {
-                this.target.objectName = this.state.objects[object].name;
-                this.target.movingToward = true;
-                this.target.targetPosition = objectVector.position;
-
-                //eat at this distance
-                if (distance < 2) {
-
-                    console.log(Date.now() + "Ate a cube " + objectVector.name);
-
-                    //add colors in a way that we dont reach complete white but we mix our colors with that which we ate
-                    let eatenColorChange = this.divideArrayByScalar(objectVector.color, 3);
-                    this.color = this.addArrays(this.divideArrayByScalar(this.color, 1.5), eatenColorChange);
-                    this.scale.x += 0.5;
-                    this.scale.y += 0.5;
-                    this.scale.z += 0.5;
-                    this.target.movingToward = false;
-                    this.destination.direction = "";
-                    this.destination.status = false;
-                    this.emitEatToPlayers(objectVector.name, this.state.objects[object]);
+        //case where there are no more objects at all and we're still pursuing food
+        if (this.state.objects.length <= 0 && this.target.movingToward) {
+            this.target.movingToward = false;
+            this.destination.direction = "forward";
+            this.destination.status = false;
+        } else {
+            //iterate through the objects and check their distances
+            for (let object in this.state.objects) {
+                let objectVector = {
+                    position: {
+                        x: this.state.objects[object].positionx,
+                        y: this.state.objects[object].positiony,
+                        z: this.state.objects[object].positionz
+                    },
+                    scale: this.scale,
+                    name: this.state.objects[object].name,
+                    color: this.state.objects[object].color
                 }
-            } else {
+
+                let distance = this.vectorDistance(this.position, objectVector.position);
+                //check if we are still pursuing and the food has actually been eaten
                 if (this.target.movingToward && _.findIndex(this.state.objects, ['name', this.target.objectName]) === -1) {
                     this.target.movingToward = false;
                     this.destination.direction = "forward";
                     this.destination.status = false;
                 }
+
+                //check radius around us to detect if nearby a cube
+                if (distance < 10) {
+                    this.target.objectName = this.state.objects[object].name;
+                    this.target.movingToward = true;
+                    this.target.targetPosition = objectVector.position;
+
+                    //eat at this distance
+                    if (distance < 2) {
+
+                        //add colors in a way that we dont reach complete white but we mix our colors with that which we ate
+                        let eatenColorChange = this.divideArrayByScalar(objectVector.color, 3);
+                        this.color = this.addArrays(this.divideArrayByScalar(this.color, 1.5), eatenColorChange);
+                        this.scale.x += 0.5;
+                        this.scale.y += 0.5;
+                        this.scale.z += 0.5;
+                        this.target.movingToward = false;
+                        this.destination.direction = "";
+                        this.destination.status = false;
+                        this.emitEatToPlayers(objectVector.name, this.state.objects[object]);
+                    }
+                }
             }
         }
+
     }
 }
 

@@ -5,8 +5,10 @@ var io = require('socket.io')(http);
 var pg = require('pg');
 var connString = "postgres://test:Entropy@localhost:5432/entropy";
 const cors = require('cors');
-var _ = require('lodash')
-var Npc = require('./Npc.js')
+var _ = require('lodash');
+var Npc = require('./npc/Npc.js');
+var Spawner = require('./npc/Spawner.js');
+var favicon = require('serve-favicon');
 
 var client = new pg.Client(connString);
 client.connect();
@@ -17,7 +19,8 @@ var state = {
     disconnectSent: false
 }
 
-//let something = new Npc(state, io, client, { x: 0.0, y: 0.0, z: 0.0 }, "Khan");
+let foodSpawner = new Spawner("random", state, client);
+foodSpawner.createSeed();
 
 let npcArray = [];
 
@@ -38,6 +41,8 @@ app.use(express.static('client'));
 app.get('/', function (req, res) {
     res.sendFile(__dirname + '/client/client.html');
 });
+
+app.use(favicon(__dirname + `/public/icon/favicon.ico`));
 
 /*
 app.get('/', function (req, res) {
@@ -111,6 +116,7 @@ io.on('connection', function (socket) {
 
     socket.on('disconnect', function () {
         //console.log("DISCONNECT");
+        console.log(socket.id)
 
         for (player in state.players) {
             if (player !== socket.id && !state.disconnectSent) {
@@ -118,6 +124,7 @@ io.on('connection', function (socket) {
             }
         }
 
+        console.log(state.players);
         delete state.players[socket.id];
 
         console.log(`Number of players: ${Object.keys(state.players).length},`);
@@ -137,6 +144,7 @@ io.on('connection', function (socket) {
     })
 
     socket.on('objectCreated', function (newObjectPacket) {
+        console.log(newObjectPacket);
         for (player in state.players) {
             if (newObjectPacket.socketID !== player) {
                 io.to(player).emit('objectCreated', newObjectPacket);
@@ -195,10 +203,14 @@ function playerExistsObject(playerName, state) {
 
 function updatePlayer(playerObj, state) {
     playerObj = jsonParseObjectFields(playerObj);
-    state.players[playerObj.socketID] = { ...state.players[playerObj.socketID], ...playerObj };
-    //console.log(state.players[playerObj.socketID]);
-    //emit that player has changed to all other players
-    return playerObj.socketID;
+    //console.log(playerObj.socketID);
+
+    if (playerObj.socketID) {
+        state.players[playerObj.socketID] = { ...state.players[playerObj.socketID], ...playerObj };
+        //console.log(state.players[playerObj.socketID]);
+        //emit that player has changed to all other players
+        return playerObj.socketID;
+    }
 }
 
 io.on('Something', function (socket) {
