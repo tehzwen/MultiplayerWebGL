@@ -4,7 +4,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.17.0",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.21",
     "mathjs": "^6.0.2",
     "pg": "^7.11.0",
     "seedrandom": "^3.0.1",
